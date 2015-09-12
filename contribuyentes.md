@@ -1,4 +1,4 @@
-Gracias a todos los contribuidores:
+Gracias a todos los contribuyentes:
 ------------------------------
 
 * [Akash Shende](https://github.com/akash0x53)
