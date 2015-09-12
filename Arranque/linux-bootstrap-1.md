@@ -94,6 +94,7 @@ Pero si tomamos la parte más larga del segmento de memoria y el *offset*:
 ```python
 >>> hex((0xffff << 4) + 0xffff)
 '0x10ffef'
+```
 
 que son 65519 bytes del primer megabyte. Como solo un megabyte es accesible en
 el modo real, `0x10ffef` se convierte en `0x00ffef` con [A20](https://en.wikipedia.org/wiki/A20_line)desactivado.
