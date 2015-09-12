@@ -36,8 +36,9 @@ Si encuentras algún problema, no dudes en reportarlo o crear un pull-request.
 Autor
 -----
 
-[@0xAX](https://twitter.com/0xAX) (Autor original del proyecto)
-[@veoleo95](https://twitter.com/veoleo95) (Traductor de la versión en español)
+[@0xAX](https://twitter.com/0xAX) (Autor original del proyecto).
+
+[@veoleo95](https://twitter.com/veoleo95) (Traductor de la versión en español).
 
 **NOTA DEL TRADUCTOR**
 Por favor, si encuentras algún problema con la traducción, considera que:
