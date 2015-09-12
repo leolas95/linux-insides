@@ -8,14 +8,15 @@ del kernel linux con quien sea que esté interesado en aprenderlos, junto a
 otros temas de bajo nivel.
 
 **Preguntas/Sugerencias**: No dudes en hacer cualquier pregunta o sugerencia
-contactandome en twitter[@0xAX](https://twitter.com/veoleo95), reportando un
-[problema](https://github.com/leolas95/linux-insides/issues/new), o simplemente
+contactandome en twitter[@veoleo95](https://twitter.com/veoleo95), reportando un
+[problema](https://github.com/leolas95/linux-internals/issues/new), o simplemente
 enviandome un [correo](mailto:leolespaul@gmail.com)
 
 Soporte
 -------
 
-**Soporte** Si te gusta `linux-insides`, puedes apoyarme de las siguientes formas:
+**Soporte** Si te gusta `linux-insides`, puedes apoyar al **autor original**
+de las siguientes formas:
 
 [![Flattr linux-insides](https://img.shields.io/badge/donate-flattr-green.svg)](https://flattr.com/submit/auto?user_id=0xAX&url=https://github.com/0xAX/linux-insides/&title=linux-insed) [![Support at gratipay](http://img.shields.io/gratipay/0xAX.svg)](https://gratipay.com/0xAX/) [![Support with bitcoin](https://img.shields.io/badge/donate-bitcoin-green.svg)](https://www.coinbase.com/checkouts/0bfa452a41cf52c0b3f99500b4f31685) [![Support via gitbook](https://img.shields.io/badge/donate-gitbook-green.svg)](https://gumroad.com/l/gitbook_54c9232c1db1670300055523?wanted=true)
 
@@ -31,10 +32,12 @@ Si encuentras algún problema, no dudes en reportarlo o crear un pull-request.
 
 **Por favor lee [CONTRIBUYENDO.md](https://github.com/leolas95/linux-insides/blob/master/CONTRIBUYENDO.md)** antes de enviar algún cambio.
 
+**[Link al proyecto original](https://github.com/0xAX/linux-insides)**
+
 ![image](http://oi58.tinypic.com/23upobq.jpg)
 
-Autor
------
+Autores:
+-------
 
 [@0xAX](https://twitter.com/0xAX) (Autor original del proyecto).
 
