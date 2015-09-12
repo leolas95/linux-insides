@@ -20,7 +20,7 @@ sigue las siguientes reglas:
     ```
 4. Haz tus cambios.
 
-5. No olvides añadirte al archivo de `contribuidores.md`
+5. No olvides añadirte al archivo de `contribuyentes.md`
 
 
 **IMPORTANTE**
@@ -38,8 +38,8 @@ no está bien traducida, se podría mejorar, o su traducción al español
 no refleja el verdadero siginificado del idioma original, por favor
 recuerda que:
 
-1. La traducción es algo subjetivo; cada quién puede interpretarla de forma
-distinta
+1. La traducción es algo subjetivo; cada quien puede interpretarla de forma
+distinta.
 
 2. Eres totalmente libre de hacer un cambio y solicitar un pull-request para
 mejorar la traducción.

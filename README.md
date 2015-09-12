@@ -1,42 +1,10 @@
-linux-insides
-===============
+# Kernel boot process
 
-Una serie de artículos acerca del kernel linux y su funcionamiento interno.
+This chapter describes the linux kernel boot process. You will see here a
+couple of posts which describe the full cycle of the kernel loading process:
 
-**La meta es simple** - compartir mi modesto conocimiento acerca del
-funcionamiento del kernel linux y ayudar a quienes estén interesados en los
-detalles de dicho kernel, junto a otros detalles del tema.
-
-**Preguntas/Sugerencias**: Eres libre de hacer cualquier pregunta o sugerencia
-contactandome en twitter [@0xAX](https://twitter.com/0xAX), reportando un
-[error](https://github.com/0xAX/linux-internals/issues/new), o simplemente
-enviandome un email[email](mailto:anotherworldofworld@gmail.com)
-
-Soporte
--------
-
-**Soporte** Si te gusta `linux-insides` puedes apoyarme de las siguientes formas:
-
-[![Flattr linux-insides](https://img.shields.io/badge/donate-flattr-green.svg)](https://flattr.com/submit/auto?user_id=0xAX&url=https://github.com/0xAX/linux-insides/&title=linux-insed) [![Support at gratipay](http://img.shields.io/gratipay/0xAX.svg)](https://gratipay.com/0xAX/) [![Support with bitcoin](https://img.shields.io/badge/donate-bitcoin-green.svg)](https://www.coinbase.com/checkouts/0bfa452a41cf52c0b3f99500b4f31685) [![Support via gitbook](https://img.shields.io/badge/donate-gitbook-green.svg)](https://gumroad.com/l/gitbook_54c9232c1db1670300055523?wanted=true)
-
-
-LICENCIA
--------------
-
-Licensed [BY-NC-SA Creative Commons](http://creativecommons.org/licenses/by-nc-sa/4.0/).
-
-
-Contribuciones
---------------
-
-Puedes reportar errores o crear pull-request si tienes algún problema.
-
-**Por favor lee [CONTRIBUYENDO.MD](AGREGAR LINK)
-
-![image](http://oi58.tinypic.com/23upobq.jpg)
-
-Autor
----------------
-
-[@0xAX](https://twitter.com/0xAX) (Autor original del proyecto)
-[leolas](https://twitter.com/veoleo95) (Traductor al español)
+* [From the bootloader to kernel](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html) - describes all stages from turning on the computer to before the first instruction of the kernel;
+* [First steps in the kernel setup code](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-2.html) - describes first steps in the kernel setup code. You will see heap initialization, querying of different parameters like EDD, IST and etc...
+* [Video mode initialization and transition to protected mode](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-3.html) - describes video mode initialization in the kernel setup code and transition to protected mode.
+* [Transition to 64-bit mode](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-4.html) - describes preparation for transition into 64-bit mode and transition into it.
+* [Kernel Decompression](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-5.html) - describes preparation before kernel decompression and directly decompression.

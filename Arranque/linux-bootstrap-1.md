@@ -41,12 +41,17 @@ El mágico botón de encendido, ¿Qué ocurre luego?
 --------------------------------------------------------------------------------
 
 A pesar de que estos son una serie de artículos acerca del kernel Linux, no
-empezaremos desde el código del kernel (por lo menos no en este párrafo).
+empezaremos desde el código del kernel (por lo menos no en este párrafo). Ok,
+presionaste el mágico botón de encendido en tu laptop o computador de
+escritorio y este ha empezado a trabajar. Luego de que la tarjeta madre
+envía una señal a la fuente de poder, esta provee a la computadora con
+la cantidad debida de electricidad. Una vez que la tarjeta madre recibe la señal
+correcta de energía, esta intenta iniciar el CPU. Este reinicia todos los
+datos residuales en sus registros y establece valores predefinidos para
+cada uno de ellos.
 
-Despite that this is a series of posts about the Linux kernel, we will not start from the kernel code (at least not in this paragraph). Ok, you pressed the magic power button on your laptop or desktop computer and it started to work. After the motherboard sends a signal to the [power supply](https://en.wikipedia.org/wiki/Power_supply), the power supply provides the computer with the proper amount of electricity. Once the motherboard receives the [power good signal](https://en.wikipedia.org/wiki/Power_good_signal), it tries to start the CPU. The CPU resets all leftover data in its registers and sets up predefined values for each of them.
-
-
-[80386](https://en.wikipedia.org/wiki/Intel_80386) and later CPU's define the following predefined data in CPU registers after the computer resets:
+La línea de CPUs 80386 (y los posteriores a esta) establecen una serie de datos
+predefinidos en los registros del CPU luego de un reinicio:
 
 ```
 IP          0xfff0
@@ -54,44 +59,69 @@ CS selector 0xf000
 CS base     0xffff0000
 ```
 
-The processor starts working in [real mode](https://en.wikipedia.org/wiki/Real_mode). Let's back up a little to try and understand memory segmentation in this mode. Real mode is supported on all x86-compatible processors, from the [8086](https://en.wikipedia.org/wiki/Intel_8086) all the way to the modern Intel 64-bit CPUs. The 8086 processor had a 20-bit address bus, which means that it could work with 0-2^20 bytes address space (1 megabyte). But it only has 16-bit registers, and with 16-bit registers the maximum address is 2^16 or 0xffff (64 kilobytes). [Memory segmentation](http://en.wikipedia.org/wiki/Memory_segmentation) is used to make use of all of the address space available. All memory is divided into small, fixed-size segments of 65535 bytes, or 64 KB. Since we cannot address memory above 64 KB with 16 bit registers, an alternate method was devised. An address consists of two parts: the beginning address of the segment and an offset from this address. To get a physical address in memory, we need to multiply the segment part by 16 and add the offset part:
+El procesador comienza a trabajar en [modo real](https://es.wikipedia.org/wiki/Modo_real).
+Vamos a repasar un poco para entender cómo funciona la segmentación de memoria
+en este modo. El modo real está soportado en todos los procesadores compatibles
+con la arquitectura x86, desde el [8086](https://es.wikipedia.org/wiki/Intel_8086_y_8088)
+hasta los modernos CPUs Intel de 64 bits. El procesador 8086 tenía un bus de
+direcciones de 20 bits, lo que significa que podía trabajar con 0-2^20
+bytes de dirección de espacio (1 megabyte). Pero este solo tenía registros de
+16 bits, con los cuales la dirección máxima es 2^16, o 0xffff (64 Kilobytes).
+La [Segmentación de memoria](https://es.wikipedia.org/wiki/Segmentaci%C3%B3n_de_memoria)
+sirve para hacer uso de todo el espacio de dirección disponible. Toda la
+memoria es dividida en pequeños segmentos de tamaño fijo de 65535 bytes, o 64
+64 KB. Como no podemos direccionar memoria más allá de 64 Kb con registros de
+16 bits, se ideó un método alternativo. Una dirección consta de dos partes:
+el inicio de la dirección del segmento y un [*offset*](https://es.wikipedia.org/wiki/Offset_%28inform%C3%A1tica%29).
+Para obtener la dirección física en memoria, debemos multiplicar la parte del
+segmento por 16 y sumar la parte del *offset*:
 
 ```
 PhysicalAddress = Segment * 16 + Offset
 ```
 
-For example if `CS:IP` is `0x2000:0x0010`, the corresponding physical address will be:
+Por ejemplo, si `CS:IP` es `0x2000:0x0010`, la dirección física correspondiente
+será:
 
 ```python
 >>> hex((0x2000 << 4) + 0x0010)
 '0x20010'
 ```
 
-But if we take the largest segment part and offset: `0xffff:0xffff`, it will be:
+Pero si tomamos la parte más larga del segmento de memoria y el *offset*: 
+`0xffff:0xffff`, este será:
 
 ```python
 >>> hex((0xffff << 4) + 0xffff)
 '0x10ffef'
-```
 
-which is 65519 bytes over first megabyte. Since only one megabyte is accessible in real mode, `0x10ffef` becomes `0x00ffef` with disabled [A20](https://en.wikipedia.org/wiki/A20_line).
+que son 65519 bytes del primer megabyte. Como solo un megabyte es accesible en
+el modo real, `0x10ffef` se convierte en `0x00ffef` con [A20](https://en.wikipedia.org/wiki/A20_line)desactivado.
 
-Ok, now we know about real mode and memory addressing. Let's get back to register values after reset:
+Muy bien, ahora sabemos acerca del modo real y el direccionamiento de memoria.
+Volvamos a los valores de los registros del CPU luego del reinicio:
 
-`CS` register consists of two parts: the visible segment selector and hidden base address. We know predefined `CS` base and `IP` value, so the logical address will be:
+El registro `CS` consiste de dos partes: el selector visible del segmento y una
+dirección base oculta. Conocemos el `CS` base predefinidoy el valor de `IP`,
+por lo que la siguiente dirección lógica será:
 
 ```
 0xffff0000:0xfff0
 ```
 
-The starting address is formed by adding the base address to the value in the EIP register:
+La dirección inicial se forma sumando la dirección base al valor en el
+registro `EIP`:
 
 ```python
 >>> 0xffff0000 + 0xfff0
 '0xfffffff0'
 ```
-
-We get `0xfffffff0` which is 4GB - 16 bytes. This point is called the [Reset vector](http://en.wikipedia.org/wiki/Reset_vector). This is the memory location at which the CPU expects to find the first instruction to execute after reset. It contains a [jump](http://en.wikipedia.org/wiki/JMP_%28x86_instruction%29) instruction which usually points to the BIOS entry point. For example, if we look in the [coreboot](http://www.coreboot.org/) source code, we see:
+Obtenemos '0xfffffff0', que son 4GB - 16 bytes. Este punto es llamado [Vector de reinicio](https://en.wikipedia.org/wiki/Reset_vector).
+Esta es la dirección de memoria en la que el CPU espera encontrar la primera
+instrucción a ejecutar luego del reinicio. Esta contiene una instrucción
+[jump](https://en.wikipedia.org/wiki/JMP_%28x86_instruction%29), que usualmente
+apunta al punto de entrada de la BIOS. Por ejemplo, si miramos en el código
+fuente de [coreboot](http://www.coreboot.org/), veremos lo siguiente:
 
 ```assembly
 	.section ".reset"
@@ -103,7 +133,9 @@ reset_vector:
 	...
 ```
 
-Here we can see the jump instruction [opcode](http://ref.x86asm.net/coder32.html#xE9) - 0xe9 to the address `_start - ( . + 2)`, and we can see that the `reset` section is 16 bytes and starts at `0xfffffff0`:
+Aquí podemos ver el que el [opcode](http://ref.x86asm.net/coder32.html#xE9) de la
+instrucción jump - 0xe9 apunta a la dirección `_start - ( . + 2)`,(!!) y también
+podemos ver que la sección `reset` es de 16 bytes, y comienza en `0xfffffff0`:
 
 ```
 SECTIONS {
@@ -117,7 +149,16 @@ SECTIONS {
 }
 ```
 
-Now the BIOS starts: after initializing and checking the hardware, it needs to find a bootable device. A boot order is stored in the BIOS configuration, controlling which devices the kernel attempts to boot from. When attempting to boot from a hard drive, the BIOS tries to find a boot sector. On hard drives partitioned with an MBR partition layout, the boot sector is stored in the first 446 bytes of the first sector (which is 512 bytes). The final two bytes of the first sector are `0x55` and `0xaa`, which signals the BIOS that the device is bootable. For example:
+Ahora el BIOS inicia: luego de inicializar y verificar el hardware, necesita
+encontrar un dispositivo de arranque. Una orden de arranque es almacenada en
+la configuración del BIOS, controlando desde cuáles dispositivos el kernel
+intenta arrancar. Cuando se intenta arrancar desde un disco duro, el BIOS
+intenta encontrar un [sector de arranque](https://es.wikipedia.org/wiki/Bloque_de_arranque).
+En los discos duros particionados con un [MBR](https://es.wikipedia.org/wiki/Registro_de_arranque_principal),
+el sector de arranque es almacenado en los primeros 446 bytes del primer sector
+(el cual es de 512 bytes). Los últimos dos bytes del primer sector son `0x55`
+y `0xaa`, lo que le indica al BIOS que el dispositivo es de arranque. Por
+ejemplo:
 
 ```assembly
 ;
@@ -141,45 +182,64 @@ db 0x55
 db 0xaa
 ```
 
-Build and run it with:
+Compilar y ejecutar con:
 
 ```
 nasm -f bin boot.nasm && qemu-system-x86_64 boot
 ```
 
-This will instruct [QEMU](http://qemu.org) to use the `boot` binary we just built as a disk image. Since the binary generated by the assembly code above fulfills the requirements of the boot sector (the origin is set to `0x7c00`, and we end with the magic sequence), QEMU will treat the binary as the master boot record(MBR) of a disk image.
+Esto le ordenará al [QEMU](http://qemu.org) de usar el archivo binario `boot`
+que acabamos de crear arriba como una imágen de disco. Como el binario generado
+cumple los requerimientos del sector de arranque (el origen está en `0x7c00`, 
+y terminamos con la *secuencia mágica* 0x55 y 0xaa), QEMU tratará el binario
+como el registro de arranque principal (*del inglés MBR*) de una imágen
+de disco.
 
-You will see:
+Podrás observar:
 
 ![Simple bootloader which prints only `!`](http://oi60.tinypic.com/2qbwup0.jpg)
 
-In this example we can see that the code will be executed in 16 bit real mode and will start at 0x7c00 in memory. After starting it calls the [0x10](http://www.ctyme.com/intr/rb-0106.htm) interrupt which just prints the `!` symbol. It fills the rest of the 510 bytes with zeros and finishes with the two magic bytes `0xaa` and `0x55`.
+En este ejemplo podemos ver que el código será ejecutado en modo real de
+16 bits, y que empezará en la dirección de memoria `0x7c00`. Luego de iniciar, 
+se llama a la interrupción [0x10](http://www.ctyme.com/intr/rb-0106.htm), que
+simplemente imprime el símbolo `!`. Luego se llenan los 510 bytes restantes con
+ceros, y se termina con los dos *bytes mágicos* `0xaa` y `0x55`
 
-You can see a binary dump of this with the `objdump` util:
+Con la herramienta `objdump` podrás observar el residuo
+binario de esta operación:
 
 ```
 nasm -f bin boot.nasm
 objdump -D -b binary -mi386 -Maddr16,data16,intel boot
 ```
 
-A real-world boot sector has code to continue the boot process and the partition table instead of a bunch of 0's and an exclamation mark :) From this point onwards, BIOS hands over control to the bootloader.
-
-**NOTE**: As you can read above the CPU is in real mode. In real mode, calculating the physical address in memory is done as following:
+Un sector de arranque real tiene código para continuar el proceso de arranque
+y una tabla de partición en vez de un montón de 0's y un signo de
+exclamación :) A partir de este punto, el BIOS le cede el control al cargador
+de arranque.
+**NOTA**: Como se puede leer más arriba, el CPU está en modo real. En este
+modo, se calcula la dirección física de memoria de la siguiente forma:
 
 ```
 PhysicalAddress = Segment * 16 + Offset
 ```
 
-The same as mentioned before. We have only 16 bit general purpose registers, the maximum value of a 16 bit register is `0xffff`, so if we take the largest values the result will be:
+Cómo se mencionó anteriormente, solo disponemos de [registros de propósito
+general](https://es.wikipedia.org/wiki/Registro_%28hardware%29) de 16 bits, el
+valor máximo de un registro de 16 bits es `0xffff`, por lo que si tomamos los
+valores más grandes, el resultado será:
 
 ```python
 >>> hex((0xffff * 16) + 0xffff)
 '0x10ffef'
 ```
+Donde `0x10ffef` equivale a `1MB + 64KB - 16b`i. Pero un procesador
+[8086](https://es.wikipedia.org/wiki/Intel_8086_y_8088), el cuál fue el primer
+procesador en usar modo real, tenía una línea de dirección de 20 bits, y
+`2^20 = 1048576.0`, lo que es 1MB. Esto significa que la cantidad real
+de memoria disponible es 1MB.
 
-Where `0x10ffef` is equal to `1MB + 64KB - 16b`. But a [8086](https://en.wikipedia.org/wiki/Intel_8086) processor, which was the first processor with real mode, had a 20 bit address line and `2^20 = 1048576.0` is 1MB. This means the actual  memory available is 1MB.
-
-General real mode's memory map is:
+El mapa general del modo real es:
 
 ```
 0x00000000 - 0x000003FF - Real Mode Interrupt Vector Table
@@ -195,13 +255,16 @@ General real mode's memory map is:
 0x000F0000 - 0x000FFFFF - System BIOS
 ```
 
-In the beginning of this post I wrote that the first instruction executed by the CPU is located at address `0xFFFFFFF0`, which is much larger than `0xFFFFF` (1MB). How can the CPU access this in real mode? This is in the [coreboot](http://www.coreboot.org/Developer_Manual/Memory_map) documentation:
+Al inicio de este artículo escribí que la primera instrucción ejecutada por
+el CPU se localica en `0xFFFFFFF0`, que es mucho más largo que `0xFFFFF` (1MB),
+entonces ¿Cómo puede el CPU acceder a esta dirección en modo real?. La
+respuesta está en la [documentación](http://www.coreboot.org/Developer_Manual/Memory_map)
+de coreboot:
 
 ```
 0xFFFE_0000 - 0xFFFF_FFFF: 128 kilobyte ROM mapped into address space
 ```
-
-At the start of execution, the BIOS is not in RAM but in ROM.
+Al comienzo de la ejecución, el BIOS no está en RAM, sino en ROM.
 
 Bootloader
 --------------------------------------------------------------------------------
