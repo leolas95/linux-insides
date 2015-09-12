@@ -9,8 +9,7 @@ otros temas de bajo nivel.
 
 **Preguntas/Sugerencias**: No dudes en hacer cualquier pregunta o sugerencia
 contactandome en twitter[@veoleo95](https://twitter.com/veoleo95), reportando un
-[problema](https://github.com/leolas95/linux-internals/issues/new), o simplemente
-enviandome un [correo](mailto:leolespaul@gmail.com)
+problema, o simplemente enviandome un [correo](mailto:leolespaul@gmail.com)
 
 Soporte
 -------
