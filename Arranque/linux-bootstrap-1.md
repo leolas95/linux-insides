@@ -117,7 +117,7 @@ registro `EIP`:
 >>> 0xffff0000 + 0xfff0
 '0xfffffff0'
 ```
-Obtenemos '0xfffffff0', que son 4GB - 16 bytes. Este punto es llamado [Vector de reinicio](https://en.wikipedia.org/wiki/Reset_vector).
+Obtenemos `0xfffffff0`, que son 4GB - 16 bytes. Este punto es llamado [Vector de reinicio](https://en.wikipedia.org/wiki/Reset_vector).
 Esta es la dirección de memoria en la que el CPU espera encontrar la primera
 instrucción a ejecutar luego del reinicio. Esta contiene una instrucción
 [jump](https://en.wikipedia.org/wiki/JMP_%28x86_instruction%29), que usualmente
@@ -218,6 +218,7 @@ Un sector de arranque real tiene código para continuar el proceso de arranque
 y una tabla de partición en vez de un montón de 0's y un signo de
 exclamación :) A partir de este punto, el BIOS le cede el control al cargador
 de arranque.
+
 **NOTA**: Como se puede leer más arriba, el CPU está en modo real. En este
 modo, se calcula la dirección física de memoria de la siguiente forma:
 
