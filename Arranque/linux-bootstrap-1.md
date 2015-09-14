@@ -268,16 +268,44 @@ de coreboot:
 ```
 Al comienzo de la ejecución, el BIOS no está en RAM, sino en ROM.
 
-Bootloader
+Cargador de arranque
 --------------------------------------------------------------------------------
 
-There are a number of bootloaders that can boot Linux, such as [GRUB 2](https://www.gnu.org/software/grub/) and [syslinux](http://www.syslinux.org/wiki/index.php/The_Syslinux_Project). The Linux kernel has a [Boot protocol](https://github.com/torvalds/linux/blob/master/Documentation/x86/boot.txt) which specifies the requirements for bootloaders to implement Linux support. This example will describe GRUB 2.
+Existe un buen número de cargadores de arranque que funcionan con Linux,
+tales como [GRUB 2](https://www.gnu.org/software/grub/)
+y [syslinux](http://www.syslinux.org/wiki/index.php/The_Syslinux_Project).
+El kernel Linux tiene un [protocolo de arranque](https://github.com/torvalds/linux/blob/master/Documentation/x86/boot.txt) que le indica a los
+cargadores de arranque los requerimientos para soportar Linux.
+El siguiente ejemplo describirá GRUB 2.
 
-Now that the BIOS has chosen a boot device and transferred control to the boot sector code, execution starts from [boot.img](http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/boot/i386/pc/boot.S;hb=HEAD). This code is very simple due to the limited amount of space available, and contains a pointer that it uses to jump to the location of GRUB 2's core image. The core image begins with [diskboot.img](http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/boot/i386/pc/diskboot.S;hb=HEAD), which is usually stored immediately after the first sector in the unused space before the first partition. The above code loads the rest of the core image into memory, which contains GRUB 2's kernel and drivers for handling filesystems. After loading the rest of the core image, it executes [grub_main](http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/kern/main.c).
+Ahora, una vez que el BIOS ha elegido un dispositivo de arranque y transferido
+el control al código del sector de arranque, la ejecución comienza desde
+[boot.img](http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/boot/i386/pc/boot.S;hb=HEAD).
+Debido a la limitada cantidad de espacio disponible, este código es bastante
+simple, y contiene un puntero utilizado para moverse a la localización de la
+imágen central de GRUB 2.(!!)
 
-`grub_main` initializes the console, gets the base address for modules, sets the root device, loads/parses the grub configuration file, loads modules etc. At the end of execution, `grub_main` moves grub to normal mode. `grub_normal_execute` (from `grub-core/normal/main.c`) completes the last preparation and shows a menu to select an operating system. When we select one of the grub menu entries, `grub_menu_execute_entry` runs, which executes the grub `boot` command, booting the selected operating system.
+La imágen central comienza con [diskboot.img](http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/boot/i386/pc/diskboot.S;hb=HEAD),
+que usualmente se almacena en el primer sector del espacio disponible antes
+de la primera partición. El código mostrado arriba dirige el resto de la
+imágen central a la memoria, la cual el kernel y los controladores de
+GRUB 2 para el manejo de sistemas de archivos. Luego de cargar el resto de
+la imágen cetral, se ejecuta [grum main]((http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/kern/main.c)
 
-As we can read in the kernel boot protocol, the bootloader must read and fill some fields of the kernel setup header, which starts at `0x01f1` offset from the kernel setup code. The kernel header [arch/x86/boot/header.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S) starts from:
+`grub main` inicializa la consola, obtiene la dirección básica para los
+módulos, establece el dispositivo raíz, carga/analiza el archivo de
+configuración de GRUB, carga los módulos, etc. Al final de la ejecución,
+`grub_main` pone a grub en modo normal. `grub_normal_execute`
+(en `grub-core/normal/main.c`) termina los detalles finales y luego muestra
+un menú para seleccionar el sistema operativo. Cuando elegimos algunas de
+las opciones, se ejecuta `grub_menu_execute_entry`, que a su vez ejecuta
+el comando `boot`, iniciando así el sistema operativo.
+
+Como podemos leer en el protocolo de arranque del kernel, el cargador de
+arranque debe leer y llenar algunos campos en el archivo de cabecera de
+configuración del kernel, el cual comienza a una distancia relativa
+de `0x01f1` del código de configuración del kernel. El archivo
+de cabecera del kernel [arch/x86/boot/header.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S) inicia desde:
 
 ```assembly
 	.globl hdr
@@ -290,64 +318,84 @@ hdr:
 	root_dev:    .word 0
 	boot_flag:   .word 0xAA55
 ```
+El cargador de arranque debe llenar este y otros archivos de cabecera
+(solo los marcados como `write` en el protocolo de arranque de Linux,
+por ejemplo [este](https://github.com/torvalds/linux/blob/master/Documentation/x86/boot.txt#L354)) con valores que, o bien se obtuvieron de la línea
+de comandos, o bien se calcularon. Por ahora no ahondaremos mucho
+en describir y explicar todos los campos del archivo de cabecera del
+kernel; nos enfocaremos más en ellos cuando el kernel los use. Podrás
+encontrar una descripción de dichos campos en el
+[protocolo de arranque](https://github.com/torvalds/linux/blob/master/Documentation/x86/boot.txt#L156)
 
-The bootloader must fill this and the rest of the headers (only marked as `write` in the Linux boot protocol, for example [this](https://github.com/torvalds/linux/blob/master/Documentation/x86/boot.txt#L354)) with values which it either got from command line or calculated. We will not see a description and explanation of all fields of the kernel setup header, we will get back to that when the kernel uses them. You can find a description of all fields in the [boot protocol](https://github.com/torvalds/linux/blob/master/Documentation/x86/boot.txt#L156).
-
-As we can see in the kernel boot protocol, the memory map will be the following after loading the kernel:
+Como podemos observar en el protocolo de arranque, luego de cargar el
+kernel, el mapa de la memoria será el siguiente:
 
 ```shell
-         | Protected-mode kernel  |
-100000   +------------------------+
-         | I/O memory hole        |
-0A0000   +------------------------+
-         | Reserved for BIOS      | Leave as much as possible unused
-         ~                        ~
-         | Command line           | (Can also be below the X+10000 mark)
-X+10000  +------------------------+
-         | Stack/heap             | For use by the kernel real-mode code.
-X+08000  +------------------------+
-         | Kernel setup           | The kernel real-mode code.
-         | Kernel boot sector     | The kernel legacy boot sector.
-       X +------------------------+
-         | Boot loader            | <- Boot sector entry point 0x7C00
-001000   +------------------------+
-         | Reserved for MBR/BIOS  |
-000800   +------------------------+
-         | Typically used by MBR  |
-000600   +------------------------+
-         | BIOS use only          |
-000000   +------------------------+
+         | Modo protegido del kernel |
+100000   +---------------------------+
+         | Hueco de memoria de E/S   |
+0A0000   +---------------------------+
+         | Reservado para el BIOS    | Dejar cuanto sea posible sin usar
+         ~                           ~
+         | Línea de comandos         | (También puede estar debajo de la marca x+10000)
+X+10000  +---------------------------+
+         | Pila/montón               | Usado por el código de modo real del kernel.
+X+08000  +---------------------------+
+         | Configuración del kernel  | El código del modo real.
+         | Sector de arranque        | Sector de arranque heredado (del inglés *legacy*)
+       X +---------------------------+
+         | Cargador de arranque      | <- Sector de entrada de arranque en 0x7C00
+001000   +---------------------------+
+         | Reservado para MBR/BIOS   |
+000800   +---------------------------+
+         | Generalmente usado por MBR|
+000600   +---------------------------+
+         | Solo para uso del  BIOS   |
+000000   +---------------------------+
 
 ```
 
-So when the bootloader transfers control to the kernel, it starts at:
+Por lo tanto, cuando el cargador de arranque le transfiere el control al kernel,
+este comienza en:
 
 ```
 0x1000 + X + sizeof(KernelBootSector) + 1
 ```
 
-where `X` is the address of the kernel bootsector loaded. In my case `X` is `0x10000`, as we can see in a memory dump:
+Donde `X` es la dirección del sector de arranque cargado. En mi caso, `X` es
+`0x10000`, como podemos observar en un volcado de memoria:
 
 ![kernel first address](http://oi57.tinypic.com/16bkco2.jpg)
 
-The bootloader has now loaded the Linux kernel into memory, filled the header fields and jumped to it. Now we can move directly to the kernel setup code.
+En este punto, el cargador de arranque ya ha cargado el kernel en memoria, 
+llenado los archivos de cabecera, y finalmente movido al kernel(!!).
+Ya podemos movernos directamente al código de arranque del kernel.
 
-Start of Kernel Setup
+
+Inicio de la configuración del kernel
 --------------------------------------------------------------------------------
 
-Finally we are in the kernel. Technically the kernel hasn't run yet, we need to set up the kernel, memory manager, process manager etc first. Kernel setup execution starts from [arch/x86/boot/header.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S) at [_start](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L293). It is a little strange at first sight, as there are several instructions before it.
+Finalmente llegamos al kernel, aunque este aún no se ha ejecutado, ya que
+primero este debe configurarse, al igual que el administrador de memoria, el 
+administrador de procesos, etc. La ejecucuón del kernel inicia en
+[_start](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L293),
+ubicado en [arch/x86/boot/header.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S).
+Puede parecer extraño el principio, ya que antes pueden haber varias instrucciones.
 
-A Long time ago the Linux kernel had its own bootloader, but now if you run for example:
+Hace mucho tiempo el kernel Linux tenía su propio cargador de arranque, pero
+si actualmente ejecutas, por ejemplo:
 
 ```
 qemu-system-x86_64 vmlinuz-3.18-generic
 ```
 
-You will see:
+Verás:
 
 ![Try vmlinuz in qemu](http://oi60.tinypic.com/r02xkz.jpg)
 
-Actually `header.S` starts from [MZ](https://en.wikipedia.org/wiki/DOS_MZ_executable) (see image above), error message printing and following [PE](https://en.wikipedia.org/wiki/Portable_Executable) header:
+De hecho, `header.S` comienza desde [MZ](https://en.wikipedia.org/wiki/DOS_MZ_executable)
+(ver imágen arriba), imprimiendo mensajes de error(!!), y el siguiente
+[PE](https://en.wikipedia.org/wiki/Portable_Executable) archivo de cabecera:
 
 ```assembly
 #ifdef CONFIG_EFI_STUB
@@ -363,9 +411,10 @@ pe_header:
 	.word 0
 ```
 
-It needs this to load an operating system with [UEFI](https://en.wikipedia.org/wiki/Unified_Extensible_Firmware_Interface). We won't see how this works right now, we'll see this in one of the next chapters.
+Esto es necesario para cargar un sistema operativo con [UEFI](https://en.wikipedia.org/wiki/Unified_Extensible_Firmware_Interface).
+Por ahora no veremos cómo funciona esto, sino en alguno de los siguientes capítulos.
 
-So the actual kernel setup entry point is:
+Por lo que el verdadero pundo de entrada del kernel es:
 
 ```
 // header.S line 292
@@ -373,18 +422,21 @@ So the actual kernel setup entry point is:
 _start:
 ```
 
-The bootloader (grub2 and others) knows about this point (`0x200` offset from `MZ`) and makes a jump directly to this point, despite the fact that `header.S` starts from `.bstext` section which prints an error message:
+El cargador de arranque (grub2 y otros) conoce acerca de este punto
+(una distancia relativa de `0x200` desde `MZ`) por lo que realiza un salto
+directamente a este, a pesar del heco de que `header.S` comience desde la
+sección `.bstext`, que imprime un mensaje de error:
 
 ```
 //
 // arch/x86/boot/setup.ld
 //
-. = 0;                    // current position
-.bstext : { *(.bstext) }  // put .bstext section to position 0
+. = 0;                    // Posción actual
+.bstext : { *(.bstext) }  // Coloca la sección .bstext en la posición 0
 .bsdata : { *(.bsdata) }
 ```
 
-So the kernel setup entry point is:
+Por lo que el punto de entrada del kernel es:
 
 ```assembly
 	.globl _start
@@ -393,36 +445,50 @@ _start:
 	.byte start_of_setup-1f
 1:
 	//
-	// rest of the header
+	// resto del archivo de cabecera
 	//
 ```
 
-Here we can see a `jmp` instruction opcode - `0xeb` to the `start_of_setup-1f` point. `Nf` notation means `2f` refers to the next local `2:` label. In our case it is label `1` which goes right after jump. It contains the rest of the setup [header](https://github.com/torvalds/linux/blob/master/Documentation/x86/boot.txt#L156). Right after the setup header we see the `.entrytext` section which starts at the `start_of_setup` label.
+Aquí podemos ver un código de operación a una instrucción `jmp`(!!) - desde `0xeb`
+hasta el punto `start_of_setup-1f`. La notación `Nf` significa que,
+por ejemplo `2f` se refiere a la siguiente etiqueta local `2:`. En nuestro caso
+`1`, la cual va justo después del salto. Esta contiene el resto del
+[archivo de cabecera de configuración](https://github.com/torvalds/linux/blob/master/Documentation/x86/boot.txt#L156).
+Justo después de este archivo, veremos la sección `.entrytext`, la cual
+comienza en la etiqueta `start_of_setup`.
 
-Actually this is the first code that runs (aside from the previous jump instruction of course). After the kernel setup got the control from the bootloader, the first `jmp` instruction is located at `0x200` (first 512 bytes) offset from the start of the kernel real mode. This we can read in the Linux kernel boot protocol and also see in the grub2 source code:
+De hecho, este es el primer código que se ejectua (a parte de la instrucción
+de salto previa). Luego de que la configuración del kernel obtiene el control
+del cargador de arranque, la primera instrucción `jmp` se localiza a una
+distancia relativa de `0x200` (los primeros 512 bytes)  del inicio del
+modo real del kernel. Esto lo podemos ver en el protocolo de arranque
+del kernel, y también en el código fuente de grub2:
+
 
 ```C
   state.gs = state.fs = state.es = state.ds = state.ss = segment;
   state.cs = segment + 0x20;
 ```
 
-It means that segment registers will have following values after kernel setup starts:
+Esto significa que los segmentos de registros tendrán los siguientes valores
+luego de que comience la configuración del kernel.
 
 ```
 fs = es = ds = ss = 0x1000
 cs = 0x1020
 ```
 
-in my case when the kernel is loaded at `0x10000`.
+en mi caso, cuando el kernel se carga en `0x10000`
 
-After the jump to `start_of_setup`, it needs to do the following:
+Luego del salto a `start_of_setup`, se necesita hacer lo siguiente:
 
-* Be sure that all values of all segment registers are equal
-* Setup correct stack if needed
-* Setup [bss](https://en.wikipedia.org/wiki/.bss)
-* Jump to C code at [main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c)
+* Asegurarse de que los valores de todos los registros de segmento sean iguales.
+* Si se requiere, configurar la pila correcta(!).
+* Configurar el [bss](https://en.wikipedia.org/wiki/.bss).
+* Saltar al código en C en [main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c)
 
-Let's look at the implementation.
+Echemos un vistazo a la implementación.
+
 
 Segment registers align
 --------------------------------------------------------------------------------
