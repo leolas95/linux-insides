@@ -190,10 +190,10 @@ nasm -f bin boot.nasm && qemu-system-x86_64 boot
 ```
 
 Esto le ordenará al [QEMU](http://qemu.org) de usar el archivo binario `boot`
-que acabamos de crear arriba como una imágen de disco. Como el binario generado
+que acabamos de crear arriba como una imagen de disco. Como el binario generado
 cumple los requerimientos del sector de arranque (el origen está en `0x7c00`, 
 y terminamos con la *secuencia mágica* 0x55 y 0xaa), QEMU tratará el binario
-como el registro de arranque principal (*del inglés MBR*) de una imágen
+como el registro de arranque principal (*del inglés MBR*) de una imagen
 de disco.
 
 Podrás observar:
@@ -283,21 +283,21 @@ el control al código del sector de arranque, la ejecución comienza desde
 [boot.img](http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/boot/i386/pc/boot.S;hb=HEAD).
 Debido a la limitada cantidad de espacio disponible, este código es bastante
 simple, y contiene un puntero utilizado para moverse a la localización de la
-imágen central de GRUB 2.(!!)
+imagen central de GRUB 2.(!!)
 
-La imágen central comienza con [diskboot.img](http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/boot/i386/pc/diskboot.S;hb=HEAD),
+La imagen central comienza con [diskboot.img](http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/boot/i386/pc/diskboot.S;hb=HEAD),
 que usualmente se almacena en el primer sector del espacio disponible antes
 de la primera partición. El código mostrado arriba dirige el resto de la
-imágen central a la memoria, la cual el kernel y los controladores de
+imagen central a la memoria, la cual el kernel y los controladores de
 GRUB 2 para el manejo de sistemas de archivos. Luego de cargar el resto de
-la imágen cetral, se ejecuta [grum main]((http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/kern/main.c)
+la imagen cetral, se ejecuta [grub main](http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/kern/main.c)
 
 `grub main` inicializa la consola, obtiene la dirección básica para los
 módulos, establece el dispositivo raíz, carga/analiza el archivo de
 configuración de GRUB, carga los módulos, etc. Al final de la ejecución,
 `grub_main` pone a grub en modo normal. `grub_normal_execute`
 (en `grub-core/normal/main.c`) termina los detalles finales y luego muestra
-un menú para seleccionar el sistema operativo. Cuando elegimos algunas de
+un menú para seleccionar el sistema operativo. Cuando elegimos alguna de
 las opciones, se ejecuta `grub_menu_execute_entry`, que a su vez ejecuta
 el comando `boot`, iniciando así el sistema operativo.
 
@@ -394,7 +394,7 @@ Verás:
 ![Try vmlinuz in qemu](http://oi60.tinypic.com/r02xkz.jpg)
 
 De hecho, `header.S` comienza desde [MZ](https://en.wikipedia.org/wiki/DOS_MZ_executable)
-(ver imágen arriba), imprimiendo mensajes de error(!!), y el siguiente
+(ver imagen arriba), imprimiendo mensajes de error(!!), y el siguiente
 [PE](https://en.wikipedia.org/wiki/Portable_Executable) archivo de cabecera:
 
 ```assembly
