@@ -1,9 +1,18 @@
-# Kernel boot process
+# Proceso de arranque del kernel 
+
+Este capítulo describe el proceso de arranque del kernel. A continuación verás
+un par de artículos que describen todo el ciclo de carga del kernel:
 
 This chapter describes the linux kernel boot process. You will see here a couple of posts which describe the full cycle of the kernel loading process:
 
-* [From the bootloader to kernel](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html) - describes all stages from turning on the computer to before the first instruction of the kernel;
-* [First steps in the kernel setup code](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-2.html) - describes first steps in the kernel setup code. You will see heap initialization, querying of different parameters like EDD, IST and etc...
-* [Video mode initialization and transition to protected mode](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-3.html) - describes video mode initialization in the kernel setup code and transition to protected mode.
-* [Transition to 64-bit mode](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-4.html) - describes preparation for transition into 64-bit mode and transition into it.
-* [Kernel Decompression](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-5.html) - describes preparation before kernel decompression and directly decompression.
+**NOTA DEL TRADUCTOR:** Por ahora, mientras no se complete la traducción del
+capítulo, los enlaces dirigen al proyecto original.
+
+* [Del el cargador de arranque al kernel](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html) - describe todo el proceso desde encender la computador, hasta antes de la primera
+instrucción del kernel.
+* [Primeros pasos en el código de configuración del kernel](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-2.html) - describe los primeros pasos en el código de configuración del
+kernel. Verás la inicialización del montón, solicitud de distintos parametros como EDD, IST, etc.
+* [Inicialización del modo de vídeo y transición del modo protegido](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-3.html) - describe la inicialización del modo de vídeo en el
+código de configuración del kernel, y la transición al modo protegido.
+* [Transición al modo de 64 bits](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-4.html) - describe la preparación y transición al modo de 64 bits.
+* [Descompresión del kernel](http://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-5.html) - describe la preparación antes de la descompresión del kernel y la descompresión directa.
