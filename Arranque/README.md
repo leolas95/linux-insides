@@ -3,8 +3,6 @@
 Este capítulo describe el proceso de arranque del kernel. A continuación verás
 un par de artículos que describen todo el ciclo de carga del kernel:
 
-This chapter describes the linux kernel boot process. You will see here a couple of posts which describe the full cycle of the kernel loading process:
-
 **NOTA DEL TRADUCTOR:** Por ahora, mientras no se complete la traducción del
 capítulo, los enlaces dirigen al proyecto original.
 

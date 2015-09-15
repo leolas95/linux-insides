@@ -44,14 +44,15 @@ A pesar de que estos son una serie de artículos acerca del kernel Linux, no
 empezaremos desde el código del kernel (por lo menos no en este párrafo). Ok,
 presionaste el mágico botón de encendido en tu laptop o computador de
 escritorio y este ha empezado a trabajar. Luego de que la tarjeta madre
-envía una señal a la fuente de poder, esta provee a la computadora con
-la cantidad debida de electricidad. Una vez que la tarjeta madre recibe la señal
-correcta de energía, esta intenta iniciar el CPU. Este reinicia todos los
-datos residuales en sus registros y establece valores predefinidos para
-cada uno de ellos.
+envía una señal a la [fuente de poder](https://es.wikipedia.org/wiki/Fuente_de_alimentaci%C3%B3n)
+esta provee a la computadora con la cantidad debida de electricidad.
+Una vez que la tarjeta madre recibe la señal correcta de energía,
+esta intenta iniciar el CPU. Este reinicia todos los datos residuales
+en sus registros y establece valores predefinidos para cada uno de ellos.
 
-La línea de CPUs 80386 (y los posteriores a esta) establecen una serie de datos
-predefinidos en los registros del CPU luego de un reinicio:
+La línea de [CPUs 80386](https://es.wikipedia.org/wiki/Intel_80386)
+(y los pos teriores a esta) establecen una serie de datos predefinidos
+en los registros del CPU luego de un reinicio:
 
 ```
 IP          0xfff0
@@ -117,7 +118,7 @@ registro `EIP`:
 >>> 0xffff0000 + 0xfff0
 '0xfffffff0'
 ```
-Obtenemos `0xfffffff0`, que son 4GB - 16 bytes. Este punto es llamado [Vector de reinicio](https://en.wikipedia.org/wiki/Reset_vector).
+Obtenemos `0xfffffff0`, que son 4GB - 16 bytes. Este punto es llamado el [Vector de reinicio](https://en.wikipedia.org/wiki/Reset_vector).
 Esta es la dirección de memoria en la que el CPU espera encontrar la primera
 instrucción a ejecutar luego del reinicio. Esta contiene una instrucción
 [jump](https://en.wikipedia.org/wiki/JMP_%28x86_instruction%29), que usualmente
@@ -163,7 +164,7 @@ ejemplo:
 
 ```assembly
 ;
-; Note: this example is written in Intel Assembly syntax
+; Nota: este ejemplo está escrito con la sintaxis de ensamblador de Intel.
 ;
 [BITS 16]
 [ORG  0x7c00]
@@ -206,8 +207,8 @@ se llama a la interrupción [0x10](http://www.ctyme.com/intr/rb-0106.htm), que
 simplemente imprime el símbolo `!`. Luego se llenan los 510 bytes restantes con
 ceros, y se termina con los dos *bytes mágicos* `0xaa` y `0x55`
 
-Con la herramienta `objdump` podrás observar el residuo
-binario de esta operación:
+Con la herramienta `objdump` podrás observar el volcado
+de memoria binario de esta operación:
 
 ```
 nasm -f bin boot.nasm
@@ -485,31 +486,35 @@ Luego del salto a `start_of_setup`, se necesita hacer lo siguiente:
 * Asegurarse de que los valores de todos los registros de segmento sean iguales.
 * Si se requiere, configurar la pila correcta(!).
 * Configurar el [bss](https://en.wikipedia.org/wiki/.bss).
-* Saltar al código en C en [main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c)
+* Saltar al código en C ubicado en [main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c)
 
 Echemos un vistazo a la implementación.
 
 
-Segment registers align
+Alineación de los registros de segmentos
 --------------------------------------------------------------------------------
 
-First of all it ensures that `ds` and `es` segment registers point to the same address and disables interrupts with `cli` instruction:
+Primero que todo, se asegura que los registros de segmentos `ds` y `es` apunten
+a la misma dirección y desabilitan las interrupciones con la instrucción
+`cli`:
 
 ```assembly
 	movw	%ds, %ax
 	movw	%ax, %es
 	cli	
 ```
-
-As I wrote earlier, grub2 loads kernel setup code at address `0x10000` and `cs` at `0x1020` because execution doesn't start from the start of file, but from:
+Como dije anteriormente, grub2 carga el código de cnfiguración del kernel en
+la dirección `0x10000` y `cs` en `0x1020`, porque la ejecución no inicia
+desdel el comienzo del archivo, sino desde:
 
 ```
 _start:
 	.byte 0xeb
 	.byte start_of_setup-1f
 ```
-
-`jump`, which is at 512 bytes offset from the [4d 5a](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L47). It also needs to align `cs` from `0x10200` to `0x10000` as all other segment registers. After that we set up the stack:
+`jmp`, que está a una distancia relativa de 512 bytes de [4d 5a](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L47),
+también necesita alinear `cs` desde `0x10200` hasta `0x10000`, como a todos
+los demás registros de segmentos. Luego de eso, configuramos la pila:
 
 ```assembly
 	pushw	%ds
@@ -517,7 +522,14 @@ _start:
 	lretw
 ```
 
-push `ds` value to stack, and address of [6](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L494) label and execute `lretw` instruction. When we call `lretw`, it loads address of label `6` into the [instruction pointer](https://en.wikipedia.org/wiki/Program_counter) register and `cs` with value of `ds`. After this we will have `ds` and `cs` with the same values.
+Esto introduce el valor `ds` a la pila, junto con la dirección de la etiqueta
+[6](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L494)
+y ejecuta la intrucción `lretw`. Cuando llamamos a `lretw`, esta carga
+la dirección de la etiqueta `6` en el registro del
+[puntero de instrucciones](https://en.wikipedia.org/wiki/Program_counter)
+y luego a `cs` con el valor de `ds`. Luego de esto, tendremos a `ds` y a `cs`
+con los mismos valores.
+
 
 Stack Setup
 --------------------------------------------------------------------------------
