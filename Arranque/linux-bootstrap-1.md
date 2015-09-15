@@ -19,7 +19,7 @@ trabajo no es escribir código del kernel. Es solo un pasatiempo. Simplemente me
 gustan las cosas a bajo nivel, y para mí es interesante ver cómo todas estas cosas
 funcionan. Por lo tanto, si notas algo confuso, o tienes alguna duda/observación,
 no dudes en contactarme(!) en [twiter](@0xAX), enviarme un [correo](mailto:anotherworldofworld@gmail.com)
-o simplemente reporta un [problema](https://github.com/0xAX/linux-insides/issues/new). Lo apreciaría mucho.
+o simplemente reporta un problema. Lo apreciaría mucho.
 Todos los artículos también estarán accesibles por [linux-insides](https://github.com/0xAX/linux-insides),
 y si encuentras algún error con el contenido del artículo
 o con mi gramática, sientete libre de enviar un pull request.
@@ -33,7 +33,7 @@ o con mi gramática, sientete libre de enviar un pull request.
 
 
 De cualquier modo, si acabas de empezar a aprender algunas herramientas(!!), trataré de explicar algunas partes durante este y los siguientes artículos. Bien, terminada la pequeña introducción,
-ya podemos empezar a profundizar en el kernel y cosas de bajo nivel.
+ya podemos empezar a profundizar en el kernel y en temas de bajo nivel.
 
 Todo el código es del kernel -3.18. Si hay algún cambio, actualizaré el artículo apropiadamente.
 
