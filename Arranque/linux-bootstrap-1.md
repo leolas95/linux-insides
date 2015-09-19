@@ -531,10 +531,13 @@ y luego a `cs` con el valor de `ds`. Luego de esto, tendremos a `ds` y a `cs`
 con los mismos valores.
 
 
-Stack Setup
+Configuración de la pila
 --------------------------------------------------------------------------------
 
-Actually, almost all of the setup code is preparation for the C language environment in real mode. The next [step](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L467) is checking of `ss` register value and make a correct stack if `ss` is wrong:
+De hecho, casi todo el código de configuración es para preparar el entorno
+del lenguaje C en modo real. El [siguiente paso](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L467) 
+es revisar que el valor del registro `ss` sea correcto, y corregir la pila si
+no es así:
 
 ```assembly
 	movw	%ss, %dx
@@ -543,15 +546,17 @@ Actually, almost all of the setup code is preparation for the C language environ
 	je	2f
 ```
 
-This can lead to 3 different scenarios:
+Esto puede llevar a tres escenarios distintos:
 
-* `ss` has valid value 0x10000 (as all other segment registers beside `cs`)
-* `ss` is invalid and `CAN_USE_HEAP` flag is set     (see below)
-* `ss` is invalid and `CAN_USE_HEAP` flag is not set (see below)
 
-Let's look at all three of these scenarios:
+* El valor de `ss` válido; 0x10000 (así como los otros registros de segmentos, además de `cs`)
+* El valor de `ss` es inválido y la bandera `CAN_USE_HEAP` está establecida (ver debajo)
+* Es valor de `ss` es inválido y la bandera `CAN_USE_HEAP` no está establecida (ver debajo)
 
-1. `ss` has a correct address (0x10000). In this case we go to label [2](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L481):
+Echemos un vistazo a estos tres casos:
+
+1. La dirección de `ss` (0x10000) es correcta. En este caso, nos movemos a la
+etiqueta [2](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L481).
 
 ```
 2: 	andw	$~3, %dx
@@ -562,11 +567,23 @@ Let's look at all three of these scenarios:
 	sti
 ```
 
-Here we can see aligning of `dx` (contains `sp` given by bootloader) to 4 bytes and checking wether it is zero. If it is zero, we put `0xfffc` (4 byte aligned address before maximum segment size - 64 KB) in `dx`. If it is not zero we continue to use `sp` given by the bootloader (0xf7f4 in my case). After this we put the `ax` value to `ss` which stores the correct segment address of `0x10000` and sets up a correct `sp`. We now have a correct stack:
+Aquí podemos ver el alineamiento de `dx` (que contiene a `sp`, dado por el cargador de arranque)
+a 4 bytes, y también se revisa si su valor es cero. Si es así, entonces
+colocamos a `0xfffc` (una dirección alineada a 4 bytes, antes del tamaño máximo
+del segmento - 64 KB) en `dx`. Sino, continuamos usando el `sp` dado por el
+cargador de arranque (en mi caso, 0xf7f4). Luego de esto, colocamos el valor de
+`ax` en `ss`, el cual almacena la dirección de segmento `0x10000`, que es la
+correcta, y por lo tanto crea un registro `sp` correcto. Ahora si tenemos una pila válida:
 
 ![stack](http://oi58.tinypic.com/16iwcis.jpg)
 
-2. In the second scenario, (`ss` != `ds`). First of all put the [_end](https://github.com/torvalds/linux/blob/master/arch/x86/boot/setup.ld#L52) (address of end of setup code) value in `dx` and check the `loadflags` header field with the `testb` instruction too see wether we can use heap or not. [loadflags](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L321) is a bitmask header which is defined as:
+2. En el segundo escenario (`ss` != `ds`), lo primero que hacemos es colocar
+el valor de [_end](https://github.com/torvalds/linux/blob/master/arch/x86/boot/setup.ld#L52)
+(que es la dirección del final del código de configuración) en el registro
+`dx`, y revisamos el el campo de cabecera `loadflags` con la instrucción `testb`
+para ver si podemos usar el montón o no.
+[loadflags](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L321)
+es un *bitmask* en un archivo de cabecera, que está definido de la siguiente forma:
 
 ```C
 #define LOADED_HIGH	    (1<<0)
@@ -575,7 +592,7 @@ Here we can see aligning of `dx` (contains `sp` given by bootloader) to 4 bytes 
 #define CAN_USE_HEAP	(1<<7)
 ```
 
-And as we can read in the boot protocol:
+Y, como podemos leer en el protocolo de arranque:
 
 ```
 Field name:	loadflags
@@ -587,12 +604,17 @@ Field name:	loadflags
 	heap_end_ptr is valid.  If this field is clear, some setup code
 	functionality will be disabled.
 ```
-
-If the `CAN_USE_HEAP` bit is set, put `heap_end_ptr` in `dx` which points to `_end` and add `STACK_SIZE` (minimal stack size - 512 bytes) to it. After this if `dx` is not carry (it will not be carry, dx = _end + 512), jump to label `2` as in the previous case and make a correct stack.
+Si el bit `CAN_USE_HEAP` está encendido, entonces se coloca `heap_end_ptr`
+en `dx` , el cual apunta a `_end`, y agrega `STACK_SIZE` (el tamaño mínimo de la pila - 512 bytes),
+a este (`dx`). Luego de esto, si `dx` no es un valor *carry* (!!, no estoy muy seguro a qué
+se quizo referir el autor original) (y no lo será, ya que `dx = _end + 512`), entonces
+se salta a la etiqueta `2`, como en el caso anterior, y se crea una pila
+válida.
 
 ![stack](http://oi62.tinypic.com/dr7b5w.jpg)
 
-3. When `CAN_USE_HEAP` is not set, we just use a minimal stack from `_end` to `_end + STACK_SIZE`:
+3. Cuando `CAN_USE_HEAP` no está encendido, usamos una pila mínima de `_end` hasta
+`_end + STACK_SIZE`:
 
 ![minimal stack](http://oi60.tinypic.com/28w051y.jpg)
 
