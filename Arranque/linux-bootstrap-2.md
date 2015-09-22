@@ -25,7 +25,7 @@ Antes de que podamos movernos al [Modo largo](https://es.wikipedia.org/wiki/Modo
 nativo de Intel64, el kernel debe pasar el CPU al modo protegido.
 
 ¿Pero qué es el [modo protegido](://es.wikipedia.org/wiki/Modo_protegido)? El
-modo protegido fue añadido a la arquitectura x86 en 1982. y fue el modo
+modo protegido fue añadido a la arquitectura x86 en 1982, y fue el modo
 principal de los procesadores Intel, desde el [80286](://en.wikipedia.org/wiki/Intel_80286)
 hasta que el Intel 64 y el modo largo llegaron.
 
@@ -176,19 +176,23 @@ o CRA (*C*onforming *R*eadable *A*ccessible / *C*onforme *L*ectura *A*ccesible).
 
   * si `E` (el bit 42) es 0, expandir hacia arriba, de otro modo, expandir hacia
   abajo. Puedes leer más [aquí](http://www.sudleyplace.com/dpmione/expanddown.html).
+
   * si W (el bit 41) (para **segmentos de datos**) es 1, el acceso para escritura está
   permitido, de otro modo, no lo está. Debes notar que el acceso de lectura siempre
   está permitido en segmentos de datos
+
   * A (el bit 40) - Indica si el segmento es accedido por el procesador o no.
+
   * C (el bit 43) es el bit de conformidad (para selectores de código). Si `C`
   es 1, el segmento de código se puede ejecutar desde un nivel de privilegios
   más bajo, por ejemplo, desde el nivel del usuario. Si `C` es 0, el segmento
   solo se podrá ejecutar desde el mismo nivel de privilegios.
+
   * si R (el bit 41) (para **segmentos de código**) es 1, se permite el acceso
   de lectura al segmento, de otro modo, no se permite. El permiso de escritura
   nunca está permitido en segmentos de código.
 
-4. DPL [2 bits](://courses.engr.illinois.edu/ece391/fa2014/references/descriptors.pdf)
+4. DPL [2 bits](https://courses.engr.illinois.edu/ece391/fa2014/references/descriptors.pdf)
 está en los bits 45-46. este define el nivel de privilegio del segmento. Puede ir
 de 0 hasta 3, donde 0 es el más privilegiado.
 
