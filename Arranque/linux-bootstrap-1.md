@@ -575,7 +575,7 @@ cargador de arranque (en mi caso, 0xf7f4). Luego de esto, colocamos el valor de
 `ax` en `ss`, el cual almacena la dirección de segmento `0x10000`, que es la
 correcta, y por lo tanto crea un registro `sp` correcto. Ahora si tenemos una pila válida:
 
-![stack](http://oi58.tinypic.com/16iwcis.jpg)
+![stack](http://oi58.tinypic.com/16iwcis.jpg).
 
 2. En el segundo escenario (`ss` != `ds`), lo primero que hacemos es colocar
 el valor de [_end](https://github.com/torvalds/linux/blob/master/arch/x86/boot/setup.ld#L52)
@@ -618,21 +618,28 @@ válida.
 
 ![minimal stack](http://oi60.tinypic.com/28w051y.jpg)
 
-BSS Setup
+Configuración del segmento BSS
 --------------------------------------------------------------------------------
 
-The last two steps that need to happen before we can jump to the main C code, are setting up the [BSS](https://en.wikipedia.org/wiki/.bss) area and checking the "magic" signature. First, signature checking:
+Los últimos dos pasos necesarios antes de que podamos saltar al código principal en C son
+configurar el área del segmento [BSS](https://en.wikipedia.org/wiki/.bss), y revisar
+la firma "mágica". Primero, la revisión de la firma:
 
 ```assembly
 cmpl	$0x5a5aaa55, setup_sig
 jne	setup_bad
 ```
 
-This simply compares the [setup_sig](https://github.com/torvalds/linux/blob/master/arch/x86/boot/setup.ld#L39) with the magic number `0x5a5aaa55`. If they are not equal, a fatal error is reported.
+Esto simplemente compara [setup_sig](https://github.com/torvalds/linux/blob/master/arch/x86/boot/setup.ld#L39) con el *número mágico* `0x5a5aaa55`.
+Si estos **no son iguales**, ocurre un *error fatal*.
 
-If the magic number matches, knowing we have a set of correct segment registers and a stack, we only need to set up the BSS section before jumping into the C code.
+Si estos **sí son iguales**, sabiendo que tenemos un conjunto de registros de segmento
+válidos, y una pila, entonces solamente tenemos que configurar la sección BSS antes
+de movernos al código en C:
 
-The BSS section is used to store statically allocated, uninitialized data. Linux carefully ensures this area of memory is first blanked, using the following code:
+La sección BSS es usada para guardar datos almacenados estáticamente, y sin inicializar. Linux
+se asegura cuidadosamente de que esta área de memoria sea primero limpiada (borrada), usando el
+siguiente código:
 
 ```assembly
 	movw	$__bss_start, %di
@@ -643,39 +650,57 @@ The BSS section is used to store statically allocated, uninitialized data. Linux
 	rep; stosl
 ```
 
-First of all the [__bss_start](https://github.com/torvalds/linux/blob/master/arch/x86/boot/setup.ld#L47) address is moved into `di` and the `_end + 3` address (+3 - aligns to 4 bytes) is moved into `cx`. The `eax` register is cleared (using an `xor` instruction), and the bss section size (`cx`-`di`) is calculated and put into `cx`. Then, `cx` is divided by four (the size of a 'word'), and the `stosl` instruction is repeatedly used, storing the value of `eax` (zero) into the address pointed to by `di`, automatically increasing `di` by four (this occurs until `cx` reaches zero). The net effect of this code is that zeros are written through all words in memory from `__bss_start` to `_end`:
+Primero que todo, la dirección de [__bss_start](https://github.com/torvalds/linux/blob/master/arch/x86/boot/setup.ld#L47)
+es movida a `di`, y la de `_end + 3` (+ 3 - se alínea a 4 bytes) a `cx`.
+El registro `eax` es limpiado (usando una instrucción `xor`), y el tamaño de la sección
+bss (`cx` - `di`) es calculado y puesto en `cx`. Luego, `cx` se divide entre cuatro
+(porque es el tamaño de una *palabra*), y la instrucción `stosl` se usa
+repetidamente, almacenando el valor de `eax` (cero) en la dirección apuntada por
+`di`, automáticamente aumentando `di` por cuatro (esto ocurre hasta que `cx`
+llega a cero). El efecto de todo esto es que un montón de ceros son escritos
+en todas las *palabras* de la memoria desde `__bss_start` hasta `_end`:
 
 ![bss](http://oi59.tinypic.com/29m2eyr.jpg)
 
-Jump to main
+Salto a main
 --------------------------------------------------------------------------------
 
-That's all, we have the stack, BSS so we can jump to the `main()` C function:
+Eso es todo, ya tenemos la pila y la sección BSS, por lo que ya podemos saltar
+a la función `main()` de C:
 
 ```assembly
 	calll main
 ```
 
-The `main()` function is located in [arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c). What this does, you can read in the next part.
+La función `main()` se localiza en [arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c). Lo que hace lo puedes leer en el siguiente artículo.
 
-Conclusion
+
+Conclusión
 --------------------------------------------------------------------------------
 
-This is the end of the first part about Linux kernel internals. If you have questions or suggestions, ping me in twitter [0xAX](https://twitter.com/0xAX), drop me [email](anotherworldofworld@gmail.com) or just create [issue](https://github.com/0xAX/linux-internals/issues/new). In the next part we will see first C code which executes in Linux kernel setup, implementation of memory routines as `memset`, `memcpy`, `earlyprintk` implementation and early console initialization and many more.
+Este es el final de la primera parte acerca del funcionamiento interno del kernel Linux.
+si tienes alguna duda o pregunta, contáctame en twitter ([0xAX](https://twitter.com/0xAX)),
+envíame un [correo](anotherworldofworld@gmail.com) o simplemente reporta un problema.
+En la siguiente parte veremos el primer código en C que se ejecuta en la configuración
+del kernel, la implementación de algunas rutinas de memoria tales como `memset`,
+`memcpy`, `earlyprintk`, inicialización temprana de la consola y mucho más.
+
+**Por favor, recuerda que el inglés no es mi idioma natal, lamento cualquier inconveniente.
+Si encuentras un error por favor envía un PR a [linux-internals](https://github.com/0xAX/linux-internals).**
 
 **Please note that English is not my first language and I am really sorry for any inconvenience. If you found any mistakes please send me PR to [linux-internals](https://github.com/0xAX/linux-internals).**
 
 Links
 --------------------------------------------------------------------------------
 
-  * [Intel 80386 programmer's reference manual 1986](http://css.csail.mit.edu/6.858/2014/readings/i386.pdf)
-  * [Minimal Boot Loader for Intel® Architecture](https://www.cs.cmu.edu/~410/doc/minimal_boot.pdf)
+  * [Manual de referencia del programador de Intel 80386 - 1986](http://css.csail.mit.edu/6.858/2014/readings/i386.pdf)
+  * [Cargador de arranque mínimo para la arcquitectura Intel®](https://www.cs.cmu.edu/~410/doc/minimal_boot.pdf)
   * [8086](http://en.wikipedia.org/wiki/Intel_8086)
   * [80386](http://en.wikipedia.org/wiki/Intel_80386)
   * [Reset vector](http://en.wikipedia.org/wiki/Reset_vector)
   * [Real mode](http://en.wikipedia.org/wiki/Real_mode)
-  * [Linux kernel boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt)
-  * [CoreBoot developer manual](http://www.coreboot.org/Developer_Manual)
-  * [Ralf Brown's Interrupt List](http://www.ctyme.com/intr/int.htm)
-  * [Power supply](http://en.wikipedia.org/wiki/Power_supply)
-  * [Power good signal](http://en.wikipedia.org/wiki/Power_good_signal)
+  * [Protocolo de arranque del kernel Linux](https://www.kernel.org/doc/Documentation/x86/boot.txt)
+  * [Manual del desarrollador de CoreBoot](http://www.coreboot.org/Developer_Manual)
+  * [Lista de interrupciones de Ralf Brown](http://www.ctyme.com/intr/int.htm)
+  * [Fuente de poder](http://en.wikipedia.org/wiki/Power_supply://es.wikipedia.org/wiki/Fuente_de_alimentaci%C3%B3n()
+  * [Señal correcta de energía](http://en.wikipedia.org/wiki/Power_good_signal)

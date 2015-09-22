@@ -1,63 +1,93 @@
-Kernel booting process. Part 2.
+Proceso de arranque del kernel. Parte 2.
 ================================================================================
 
-First steps in the kernel setup
+Primeros pasos en la configuración del kernel
 --------------------------------------------------------------------------------
+En el [artículo anterior](linux-bootstrap-1.md), comenzamos a explorar el
+funcionamiento interno del kernel Linux, y vimos la parte inicial del código
+de configuración del kernel. Nos detuvimos en la primera llamada a la función
+`main` (la cual es la primera función escrita en lenguaje C), ubicada en
+[arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c).
 
-We started to dive into linux kernel internals in the previous [part](linux-bootstrap-1.md) and saw the initial part of the kernel setup code. We stopped at the first call to the `main` function (which is the first function written in C) from [arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c). 
+En esta parte seguiremos aprendiendo acerca del código de configuración del
+kernel, y también:
+* Ver qué es el ̣̣`modo protegido`.
+* Algunos arreglos para la transición a este.
+* La inicialización del montón y de la consola.
+* Detección de memoria, valicadción del CPU, inicialización del teclado.
+* Y mucho más. 
 
-In this part we will continue to research the kernel setup code and 
-* see what `protected mode` is,
-* some preparation for the transition into it,
-* the heap and console initialization,
-* memory detection, cpu validation, keyboard initialization
-* and much much more.
+Así que vayamos al grano.
 
-So, Let's go ahead.
-
-Protected mode
+Modo protegido
 --------------------------------------------------------------------------------
+Antes de que podamos movernos al [Modo largo](https://es.wikipedia.org/wiki/Modo_largo)
+nativo de Intel64, el kernel debe pasar el CPU al modo protegido.
 
-Before we can move to the native Intel64 [Long Mode](http://en.wikipedia.org/wiki/Long_mode), the kernel must switch the CPU into protected mode.
+¿Pero qué es el [modo protegido](://es.wikipedia.org/wiki/Modo_protegido)? El
+modo protegido fue añadido a la arquitectura x86 en 1982. y fue el modo
+principal de los procesadores Intel, desde el [80286](://en.wikipedia.org/wiki/Intel_80286)
+hasta que el Intel 64 y el modo largo llegaron.
 
-What is [protected mode](https://en.wikipedia.org/wiki/Protected_mode)? Protected mode was first added to the x86 architecture in 1982 and was the main mode of Intel processors from the [80286](http://en.wikipedia.org/wiki/Intel_80286) processor until Intel 64 and long mode came.
+La principal razón para alejarse del [modo real](http://wiki.osdev.org/Real_Mode),
+es que hay un acceso limitado a la RAM. Como recordarás de la parte anterior,
+solo hay 2<sup>20</sup> bytes, o 1 Megabyte, (a veces incluso solo 640 Kilobytes)
+de RAM disponible en modo real.
 
-The main reason to move away from [Real mode](http://wiki.osdev.org/Real_Mode) is that there is very limited access to the RAM. As you may remember from the previous part, there is only 2<sup>20</sup> bytes or 1 Megabyte, sometimes even only 640 Kilobytes of RAM available in the Real mode.
+El modo protegido trajo muchos cambios, pero el más importante es la diferencia
+en la administración de la memoria. El bus de direccionamiento de 20 bits fue
+reemplazado por uno de 32 bits. Este permitió el acceso a 4 Gigabytes de memoria,
+en contra de 1 megabyte en el modo real. También se agregó soporte para el
+[paginado de memoria](https://es.wikipedia.org/wiki/Paginaci%C3%B3n_de_memoria),
+del cual pordrás leer más en los siguientes artículos.
 
-Protected mode brought many changes, but the main one is the difference in memory management. The 20-bit address bus was replaced with a 32-bit address bus. It allowed access to 4 Gigabytes of memory vs 1 Megabyte of real mode. Also [paging](http://en.wikipedia.org/wiki/Paging) support was added, which you can read about in the next sections.
 
-Memory management in Protected mode is divided into two, almost independent parts:
+La administración de memoria en modo protegido se divide en dos partes casi
+independientes:
 
-* Segmentation
-* Paging
+* Segmentación
+* Paginación
 
-Here we will only see segmentation. Paging will be discussed in the next sections. 
+Aquí solo veremos la segmentación. Discutiremos acerca de la paginación en los
+siguientes artículos.
 
-As you can read in the previous part, addresses consist of two parts in real mode:
+Como podrás leer en la parte anterior, las direcciones consisten de dos partes
+en el modo real:
 
-* Base address of the segment
-* Offset from the segment base
+* Dirección base del segmento.
+* Dirección relativa desde la base del segmento.
 
-And we can get the physical address if we know these two parts by:
+También vimos que podemos obtener la dirección física conociendo estas
+dos partes, con:
 
 ```
-PhysicalAddress = Segment * 16 + Offset
+DirecciónFísica = Segmento * 16 + DirecciónRelativa
 ```
 
-Memory segmentation was completely redone in protected mode. There are no 64 Kilobyte fixed-size segments. Instead, the size and location of each segment is described by an associated data structure called _Segment Descriptor_. The segment descriptors are stored in a data structure called `Global Descriptor Table` (GDT).
+La segmentación de memoria fue completamente rehecha en el modo protegido. Ya no hay segmentos
+con un tamaño fijo de 64 Kilobytes. En cambio, el tamaño y la ubicación de cada segmento
+es descrito por una estructura de datos asociada, llamada _Descriptor de segmento_. Los
+descriptores de segmento están almacenados en una estructura de datos llamada
+`Tabla Global de Descriptores (TGD)`
 
-The GDT is a structure which resides in memory. It has no fixed place in the memory so, its address is stored in the special `GDTR` register. Later we will see the GDT loading in the Linux kernel code. There will be an operation for loading it into memory, something like:
+La TGD es una estructura que reside en memoria. No tiene un lugar fijo en esta, por lo que su
+dirección es almacenada en un registro especial llamado `GDTR`. Más adelante
+veremos la carga de la TGD en el código del kernel de Linux. Hay una operación
+para cargarla en memoria, que sería algo como:
 
 ```assembly
 lgdt gdt
 ```
 
-where the `lgdt` instruction loads the base address and limit(size) of global descriptor table to the `GDTR` register. `GDTR` is a 48-bit register and consists of two parts:
+Donde la instrucción `lgdt` carga la dirección base y el límite (tamaño) de
+la TGD al registro `GDTR`. Este es un registro de 48 bits, y consiste de dos partes:
 
- * size(16-bit) of global descriptor table;
- * address(32-bit) of the global descriptor table.
+ * El tamaño (16 bits) de la TGD.
+ * La dirección (32 bits) de la TGD.
 
-As mentioned above the GDT contains `segment descriptors` which describe memory segments.  Each descriptor is 64-bits in size. The general scheme of a descriptor is:
+Como se menciona arriba, la TGD contiene `descriptores de segmentos` que (valga la reduncancia)
+describen segmentos de memoria. Cada descriptor tiene un tamaño de 64 bits.
+El esquema general de un descriptor es el siguiente:
 
 ```
 31          24        19      16              7            0
@@ -67,73 +97,115 @@ As mentioned above the GDT contains `segment descriptors` which describe memory 
 |             | |D| |L| 19:16 | |   | |1|C|R|A|            |
 ------------------------------------------------------------
 |                             |                            |
-|        BASE 15:0            |       LIMIT 15:0           | 0
+|        BASE 15:0            |       LÍMITE 15:0          | 0
 |                             |                            |
 ------------------------------------------------------------
 ```
 
-Don't worry, I know it looks a little scary after real mode, but it's easy. For example LIMIT 15:0 means that bit 0-15 of the Descriptor contain the value for the limit. The rest of it is in LIMIT 16:19. So, the size of Limit is 0-19 i.e 20-bits. Let's take a closer look at it:
+No te procupes, sé que luego del modo real, esto puede asustar un poco, pero
+en realidad es fácil. Por ejemplo, LIMIT 15:0 significa que el bit 0-15 del descriptor
+contiene el valor del límite. El resto está en LIMIT 16:19. Por lo tanto, el
+tamaño del límite es de 0-19 (es decir, 20 bits). Echemos un vistazo a esto:
 
-1. Limit[20-bits] is at 0-15,16-19 bits. It defines `length_of_segment - 1`. It depends on `G`(Granularity) bit.
 
-  * if `G` (bit 55) is 0 and segment limit is 0, the size of the segment is 1 Byte
-  * if `G` is 1 and segment limit is 0, the size of the segment is 4096 Bytes
-  * if `G` is 0 and segment limit is 0xfffff, the size of the segment is 1 Megabyte
-  * if `G` is 1 and segment limit is 0xfffff, the size of the segment is 4 Gigabytes
+1. Limit[20 bits] está en los bits 0-15, 16-19. Este define `length_of_segment - 1`,
+y depende de un bit llamado `G` (Granularidad).
 
-  So, it means that if
-  * if G is 0, Limit is interpreted in terms of 1 Byte and the maximum size of the segment can be 1 Megabyte.
-  * if G is 1, Limit is interpreted in terms of 4096 Bytes = 4 KBytes = 1 Page and the maximum size of the segment can be 4 Gigabytes. Actually when G is 1, the value of Limit is shifted to the left by 12 bits. So, 20 bits + 12 bits = 32 bits and 2<sup>32</sup> = 4 Gigabytes.
+  * Si `G` (el bit 55) es 0 y el límite del segmento es 0, el tamaño del
+  segmento es de 1 Byte.
+  * Si `G` es 1 y el límite del segmento es 0, el tamaño del segmento será
+  de 4096 Bytes.
+  * Si `G` es 0 y el límite del segmento es 0xfffff, el tamaño del segmento será
+  de 1 Megabyte.
+  * Si `G` es 1 y el límite del segmento es 0xfffff, el tamaño del segmento será
+  de 4 Gigabytes.
+  * if `G` is 1 and segment limit is 0xfffff, the size of the segment is 4 Gigabytes.
 
-2. Base[32-bits] is at (0-15, 32-39 and 56-63 bits). It defines the physical address of the segment's starting location.
+  Entonces, esto significa que si:
+  * `G` es 0, `Limit` es interpretado en términos de 1 Byte, y el tamaño máximo
+  del segmento puede ser 1 Megabyte.
+  * `G` es 1, `Limit` es interpretado en terminos de 4096 Bytes = 4 KBytes = 1 página,
+  y el tamaño máximo del segmento puede ser de 4 Gigabytes. De hecho, lo que realmente
+  pasa es que cuando `G` es 1, el valor de `Limit` es desplazado a la izquierda
+  12 bits. Por lo que 20 bits + 12 bits = 32 bits, y 2<sup>32</sup> = 4 Gigabytes.
 
-3. Type/Attribute (40-47 bits) defines the type of segment and kinds of access to it. 
-  * `S` flag at bit 44 specifies descriptor type. If `S` is 0 then this segment is a system segment, whereas if `S` is 1 then this is a code or data segment (Stack segments are data segments which must be read/write segments).
-  
-To determine if the segment is a code or data segment we can check its Ex(bit 43) Attribute marked as 0 in the above diagram. If it is 0, then the segment is a Data segment otherwise it is a code segment.
+2. Base[32 bits] está en los bits 0-15, 32-39 y 56-63. Este define la dirección
+física de la ubicación inicial del segmento.
 
-A segment can be of one of the following types:
+3. Type/Attribute (40-47 bits) define el tipo del segmento, en cierta forma accede
+a él.
+  * La bandera `S` en el bit 44 especifica el tipo del descriptor. Si `S` es 0,
+  entonces este segmento es del sistema, en cambio si `S` es 1,
+  entonces este segmento es de código o datos.(los segmentos de pila son
+  segmentos de datos que deben ser de lectura/escritura).
+
+Para determinar si el segmento es de código o datos, podemos revisar su
+atributo `Ex` (el bit 43), marcado como 0 en el diagrama de arriba. Si este es
+0, entonces el segmento es de datos; de otro modo, es de código.
+
+Un segmento puede ser de alguno de los siguientes tipos:
 
 ```
-|           Type Field        | Descriptor Type | Description
-|-----------------------------|-----------------|------------------
-| Decimal                     |                 |
-|             0    E    W   A |                 |
-| 0           0    0    0   0 | Data            | Read-Only
-| 1           0    0    0   1 | Data            | Read-Only, accessed
-| 2           0    0    1   0 | Data            | Read/Write
-| 3           0    0    1   1 | Data            | Read/Write, accessed
-| 4           0    1    0   0 | Data            | Read-Only, expand-down
-| 5           0    1    0   1 | Data            | Read-Only, expand-down, accessed
-| 6           0    1    1   0 | Data            | Read/Write, expand-down
-| 7           0    1    1   1 | Data            | Read/Write, expand-down, accessed
-|                  C    R   A |                 |
-| 8           1    0    0   0 | Code            | Execute-Only
-| 9           1    0    0   1 | Code            | Execute-Only, accessed
-| 10          1    0    1   0 | Code            | Execute/Read
-| 11          1    0    1   1 | Code            | Execute/Read, accessed
-| 12          1    1    0   0 | Code            | Execute-Only, conforming
-| 14          1    1    0   1 | Code            | Execute-Only, conforming, accessed
-| 13          1    1    1   0 | Code            | Execute/Read, conforming
-| 15          1    1    1   1 | Code            | Execute/Read, conforming, accessed
+|           Tipo de campo     | Tipo del descriptor   | Descripción
+|-----------------------------|-----------------------|------------------
+| Decimal                     |                       |
+|             0    E    W   A |                       |
+| 0           0    0    0   0 | Datos                 | Solo-Lectura
+| 1           0    0    0   1 | Datos                 | Solo-Lectura, accesado
+| 2           0    0    1   0 | Datos                 | Lectura/Escritura
+| 3           0    0    1   1 | Datos                 | Lectura/Escritura, accesado
+| 4           0    1    0   0 | Datos                 | Solo-Lectura, expandido abajo
+| 5           0    1    0   1 | Datos                 | Solo-Lectura, expandido abajo, accesado
+| 6           0    1    1   0 | Datos                 | Lectura/Escritura, expandido abajo
+| 7           0    1    1   1 | Datos                 | Lectura/Escritura, expandido abajo, accesado
+|                  C    R   A |                       |
+| 8           1    0    0   0 | Código                | Solo-Ejecución
+| 9           1    0    0   1 | Código                | Solo-Ejecución, accesado
+| 10          1    0    1   0 | Código                | Ejecución/Lectura
+| 11          1    0    1   1 | Código                | Ejecución/Lectura, accesado
+| 12          1    1    0   0 | Código                | Solo-Ejecución, conforme
+| 14          1    1    0   1 | Código                | Solo-Ejecución, conforme, accesado
+| 13          1    1    1   0 | Código                | Ejecución/Lectura, conforme
+| 15          1    1    1   1 | Código                | Ejecución/Lectura, conforme, accesado
 ```
 
-As we can see the first bit(bit 43) is `0` for a _data_ segment and `1` for a _code_ segment. The next three bits(40, 41, 42, 43) are either `EWA`(*E*xpansion *W*ritable *A*ccessible) or CRA(*C*onforming *R*eadable *A*ccessible).
-  * if E(bit 42) is 0, expand up other wise expand down. Read more [here](http://www.sudleyplace.com/dpmione/expanddown.html).
-  * if W(bit 41)(for Data Segments) is 1, write access is allowed otherwise not. Note that read access is always allowed on data segments.
-  * A(bit 40) - Whether the segment is accessed by processor or not.
-  * C(bit 43) is conforming bit(for code selectors). If C is 1, the segment code can be executed from a lower level privilege for e.g user level. If C is 0, it can only be executed from the same privilege level.
-  * R(bit 41)(for code segments). If 1 read access to segment is allowed otherwise not. Write access is never allowed to code segments.
+Como podemos ver, el primer bit (el 43) es `0` para un segmento de _datos_, y
+`1` para uno de _código_. Los siguientes tres bits (40, 41, 42, 43) son, o bien
+`EWA` (*E*xpansion *W*ritable *A*ccessible / *E*xpansión *E*scritura *A*ccesible)
+o CRA (*C*onforming *R*eadable *A*ccessible / *C*onforme *L*ectura *A*ccesible).
 
-4. DPL[2-bits] (Descriptor Privilege Level) is at bits 45-46. It defines the privilege level of the segment. It can be 0-3 where 0 is the most privileged.
+  * si `E` (el bit 42) es 0, expandir hacia arriba, de otro modo, expandir hacia
+  abajo. Puedes leer más [aquí](http://www.sudleyplace.com/dpmione/expanddown.html).
+  * si W (el bit 41) (para **segmentos de datos**) es 1, el acceso para escritura está
+  permitido, de otro modo, no lo está. Debes notar que el acceso de lectura siempre
+  está permitido en segmentos de datos
+  * A (el bit 40) - Indica si el segmento es accedido por el procesador o no.
+  * C (el bit 43) es el bit de conformidad (para selectores de código). Si `C`
+  es 1, el segmento de código se puede ejecutar desde un nivel de privilegios
+  más bajo, por ejemplo, desde el nivel del usuario. Si `C` es 0, el segmento
+  solo se podrá ejecutar desde el mismo nivel de privilegios.
+  * si R (el bit 41) (para **segmentos de código**) es 1, se permite el acceso
+  de lectura al segmento, de otro modo, no se permite. El permiso de escritura
+  nunca está permitido en segmentos de código.
 
-5. P flag(bit 47) - indicates if the segment is present in memory or not. If P is 0, the segment will be presented as _invalid_ and the processor will refuse to read this segment.
+4. DPL [2 bits](://courses.engr.illinois.edu/ece391/fa2014/references/descriptors.pdf)
+está en los bits 45-46. este define el nivel de privilegio del segmento. Puede ir
+de 0 hasta 3, donde 0 es el más privilegiado.
 
-6. AVL flag(bit 52) - Available and reserved bits. It is ignored in Linux.
+5. La bandera `P` (el bit 47) indica si el segmento está presente en memoria o
+no. Si `P` es 0, el segmento estará presente como _invalid_ y el procesador
+se rehusará a leer este segmento.
 
-7. L flag(bit 53) - indicates whether a code segment contains native 64-bit code. If 1 then the code segment executes in 64 bit mode.
+6. La bandera `AVL` (el bit 52) indica los bits disponibles y los reservados.
+En Linux, es ignorada.
 
-8. D/B flag(bit 54) - Default/Big flag represents the operand size i.e 16/32 bits. If it is set then 32 bit otherwise 16.
+7. La bandera `L` (el bit 53) indica si un segmento de código contiene
+código nativo de 64 bits. Si es 1 entonces el segmento de código se ejecuta en
+modo de 64 bits.
+
+8. La bandera `D/B` (Default/Big) (el bit 54) representa el tamaño del operando;
+16/32 bits. Si está encendida, entonces este será de 32 bits, de otro modo, será de 16.
+
 
 Segment registers don't contain the base address of the segment as in real mode. Instead they contain a special structure - `Segment Selector`. Each Segment Descriptor has an associated Segment Selector. `Segment Selector` is a 16-bit structure:
 
