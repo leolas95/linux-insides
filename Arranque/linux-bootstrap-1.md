@@ -606,10 +606,10 @@ Field name:	loadflags
 ```
 Si el bit `CAN_USE_HEAP` está encendido, entonces se coloca `heap_end_ptr`
 en `dx` , el cual apunta a `_end`, y agrega `STACK_SIZE` (el tamaño mínimo de la pila - 512 bytes),
-a este (`dx`). Luego de esto, si `dx` no es un valor *carry* (!!, no estoy muy seguro a qué
-se quizo referir el autor original) (y no lo será, ya que `dx = _end + 512`), entonces
-se salta a la etiqueta `2`, como en el caso anterior, y se crea una pila
-válida.
+a este (`dx`). Luego de esto, si `dx` no es una bandera
+[*carry*](https://en.wikipedia.org/wiki/Carry_flag)
+(y no lo será, ya que `dx = _end + 512`), entonces se salta a la etiqueta `2`,
+como en el caso anterior, y se crea una pila válida.
 
 ![stack](http://oi62.tinypic.com/dr7b5w.jpg)
 
