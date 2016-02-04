@@ -3,7 +3,6 @@ Proceso de arranque del kernel. Parte 2.
 
 Primeros pasos en la configuración del kernel
 --------------------------------------------------------------------------------
-<<<<<<< HEAD:Arranque/linux-bootstrap-2.md
 En el [artículo anterior](linux-bootstrap-1.md), comenzamos a explorar el
 funcionamiento interno del kernel Linux, y vimos la parte inicial del código
 de configuración del kernel. Nos detuvimos en la primera llamada a la función
@@ -16,26 +15,12 @@ kernel, y también:
 * Algunos arreglos para la transición a este.
 * La inicialización del montón y de la consola.
 * Detección de memoria, valicadción del CPU, inicialización del teclado.
-* Y mucho más. 
+* Y mucho más.
 
 Así que vayamos al grano.
 
 Modo protegido
 =======
-
-We started to dive into linux kernel insides in the previous [part](linux-bootstrap-1.md) and saw the initial part of the kernel setup code. We stopped at the first call to the `main` function (which is the first function written in C) from [arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c). 
-
-In this part we will continue to research the kernel setup code and 
-* see what `protected mode` is,
-* some preparation for the transition into it,
-* the heap and console initialization,
-* memory detection, cpu validation, keyboard initialization
-* and much much more.
-
-So, Let's go ahead.
-
-Protected mode
->>>>>>> upstream/master:Booting/linux-bootstrap-2.md
 --------------------------------------------------------------------------------
 Antes de que podamos movernos al [Modo largo](https://es.wikipedia.org/wiki/Modo_largo)
 nativo de Intel64, el kernel debe pasar el CPU al modo protegido.
@@ -118,7 +103,6 @@ El esquema general de un descriptor es el siguiente:
 ------------------------------------------------------------
 ```
 
-<<<<<<< HEAD:Arranque/linux-bootstrap-2.md
 No te procupes, sé que luego del modo real, esto puede asustar un poco, pero
 en realidad es fácil. Por ejemplo, LIMIT 15:0 significa que el bit 0-15 del descriptor
 contiene el valor del límite. El resto está en LIMIT 16:19. Por lo tanto, el
@@ -162,8 +146,6 @@ atributo `Ex` (el bit 43), marcado como 0 en el diagrama de arriba. Si este es
 
 Un segmento puede ser de alguno de los siguientes tipos:
 =======
-Don't worry, I know it looks a little scary after real mode, but it's easy. For example LIMIT 15:0 means that bit 0-15 of the Descriptor contain the value for the limit. The rest of it is in LIMIT 19:16. So, the size of Limit is 0-19 i.e 20-bits. Let's take a closer look at it:
->>>>>>> upstream/master:Booting/linux-bootstrap-2.md
 
 ```
 |           Tipo de campo     | Tipo del descriptor   | Descripción
@@ -212,18 +194,9 @@ o CRA (*C*onforming *R*eadable *A*ccessible / *C*onforme *L*ectura *A*ccesible).
   de lectura al segmento, de otro modo, no se permite. El permiso de escritura
   nunca está permitido en segmentos de código.
 
-<<<<<<< HEAD:Arranque/linux-bootstrap-2.md
 4. DPL [2 bits](https://courses.engr.illinois.edu/ece391/fa2014/references/descriptors.pdf)
 está en los bits 45-46. este define el nivel de privilegio del segmento. Puede ir
 de 0 hasta 3, donde 0 es el más privilegiado.
-=======
-As we can see the first bit(bit 43) is `0` for a _data_ segment and `1` for a _code_ segment. The next three bits(40, 41, 42, 43) are either `EWA`(*E*xpansion *W*ritable *A*ccessible) or CRA(*C*onforming *R*eadable *A*ccessible).
-  * if E(bit 42) is 0, expand up other wise expand down. Read more [here](http://www.sudleyplace.com/dpmione/expanddown.html).
-  * if W(bit 41)(for Data Segments) is 1, write access is allowed otherwise not. Note that read access is always allowed on data segments.
-  * A(bit 40) - Whether the segment is accessed by processor or not.
-  * C(bit 43) is conforming bit(for code selectors). If C is 1, the segment code can be executed from a lower level privilege e.g. user level. If C is 0, it can only be executed from the same privilege level.
-  * R(bit 41)(for code segments). If 1 read access to segment is allowed otherwise not. Write access is never allowed to code segments.
->>>>>>> upstream/master:Booting/linux-bootstrap-2.md
 
 5. La bandera `P` (el bit 47) indica si el segmento está presente en memoria o
 no. Si `P` es 0, el segmento estará presente como _invalid_ y el procesador
@@ -256,7 +229,7 @@ Where,
 Every segment register has a visible and hidden part.
 * Visible - Segment Selector is stored here
 * Hidden - Segment Descriptor(base, limit, attributes, flags)
- 
+
 The following steps are needed to get the physical address in the protected mode:
 
 * The segment selector must be loaded in one of the segment registers
