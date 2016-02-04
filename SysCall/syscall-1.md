@@ -4,14 +4,14 @@ System calls in the Linux kernel. Part 1.
 Introduction
 --------------------------------------------------------------------------------
 
-This post opens up a new chapter in [linux-insides](http://0xax.gitbooks.io/linux-insides/content/) book and as you may understand from the title, this chapter will be devoted to the [System call](https://en.wikipedia.org/wiki/System_call) concept in the Linux kernel. The choice of topic for this chapter is not accidental. In the previous [chapter](http://0xax.gitbooks.io/linux-insides/content/interrupts/index.html) we saw interrupts and interrupt handling. The concept of system calls is very similar to that of interrupts. This is because the most common way to implement system calls is as software interrupts. We will see many different aspects that are related to the system call concept. For example, we will learn what's happening when a system call occurs from userspace, we will see an implementation of a couple system call handlers in the Linux kernel, [VDSO](https://en.wikipedia.org/wiki/VDSO) and [vsyscall](https://lwn.net/Articles/446528/) concepts and many many more.
+This post opens up a new chapter in [linux-insides](http://0xax.gitbooks.io/linux-insides/content/) book, and as you may understand from the title, this chapter will be devoted to the [System call](https://en.wikipedia.org/wiki/System_call) concept in the Linux kernel. The choice of topic for this chapter is not accidental. In the previous [chapter](http://0xax.gitbooks.io/linux-insides/content/interrupts/index.html) we saw interrupts and interrupt handling. The concept of system calls is very similar to that of interrupts. This is because the most common way to implement system calls is as software interrupts. We will see many different aspects that are related to the system call concept. For example, we will learn what's happening when a system call occurs from userspace. We will see an implementation of a couple system call handlers in the Linux kernel, [VDSO](https://en.wikipedia.org/wiki/VDSO) and [vsyscall](https://lwn.net/Articles/446528/) concepts and many many more.
 
-Before we start to dive into the implementation of the system calls related stuff in the Linux kernel source code, it is good to know some theory about system calls. Let's do it in the following paragraph.
+Before we dive into Linux system call implementation, it is good to know some theory about system calls. Let's do it in the following paragraph.
 
 System call. What is it?
 --------------------------------------------------------------------------------
 
-A system call is just a userspace request of a kernel service. Yes, the operating system kernel provides many services. When your program wants to write to or read from a file, starts to listen for connections on a [socket](https://en.wikipedia.org/wiki/Network_socket), delete or create a directory, or even to finish its work, a program uses a system call. In another words, a system call is just a [C](https://en.wikipedia.org/wiki/C_%28programming_language%29) function that is placed in the kernel space and a user program can ask the kernel to do something via this function.
+A system call is just a userspace request of a kernel service. Yes, the operating system kernel provides many services. When your program wants to write to or read from a file, start to listen for connections on a [socket](https://en.wikipedia.org/wiki/Network_socket), delete or create directory, or even to finish its work, a program uses a system call. In another words, a system call is just a [C](https://en.wikipedia.org/wiki/C_%28programming_language%29) kernel space function that user space progams call to handle some request.
 
 The Linux kernel provides a set of these functions and each architecture provides its own set. For example: the [x86_64](https://en.wikipedia.org/wiki/X86-64) provides [322](https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl) system calls and the [x86](https://en.wikipedia.org/wiki/X86) provides [358](https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_32.tbl) different system calls. Ok, a system call is just a function. Let's look on a simple `Hello world` example that's written in the assembly programming language:
 
@@ -120,7 +120,7 @@ _exit(0)                                = ?
 +++ exited with 0 +++
 ```
 
-In the first line of the `strace` output, we can see [execve](https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl#L68) system call that executes our program, and the second and third are system calls that we have used in our program: `write` and `exit`. Note that we pass the parameter through the general purpose registers in our example. The order of the registers is not not accidental. The order of the registers is defined by the following agreement - [x86-64 calling conventions](https://en.wikipedia.org/wiki/X86_calling_conventions#x86-64_calling_conventions). This and other agreement for the `x86_64` architecture explained in the special document - [System V Application Binary Interface. PDF](http://www.x86-64.org/documentation/abi.pdf). In a general way, argument(s) of a function are placed either in registers or pushed on the stack. The right order is:
+In the first line of the `strace` output, we can see [execve](https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl#L68) system call that executes our program, and the second and third are system calls that we have used in our program: `write` and `exit`. Note that we pass the parameter through the general purpose registers in our example. The order of the registers is not accidental. The order of the registers is defined by the following agreement - [x86-64 calling conventions](https://en.wikipedia.org/wiki/X86_calling_conventions#x86-64_calling_conventions). This and other agreement for the `x86_64` architecture explained in the special document - [System V Application Binary Interface. PDF](http://www.x86-64.org/documentation/abi.pdf). In a general way, argument(s) of a function are placed either in registers or pushed on the stack. The right order is:
 
 * `rdi`;
 * `rsi`;
@@ -152,7 +152,7 @@ int main(int argc, char **argv)
 }
 ```
 
-There are no `fopen`, `fgets`, `printf` and `fclose` system calls in the Linux kernel, but `open`, `read` `write` and `close` instead. I think you know that these four functions `fopen`, `fgets`, `printf` and `fclose` are just functions that defined in the `C` [standard library](https://en.wikipedia.org/wiki/GNU_C_Library). Actually these functions are wrappers for the system calls. We do not call system calls directly in our code, but using [wrapper](https://en.wikipedia.org/wiki/Wrapper_function) functions from the standard library. The main reason of this is simple: a system call must be performed quickly, very quickly. As a system call must be quick, it must be small. The standard library takes responsibility to perform system calls with the correct set parameters and makes different check before it will call the given system call. Let's compile our program with the following command:
+There are no `fopen`, `fgets`, `printf` and `fclose` system calls in the Linux kernel, but `open`, `read` `write` and `close` instead. I think you know that these four functions `fopen`, `fgets`, `printf` and `fclose` are just functions that defined in the `C` [standard library](https://en.wikipedia.org/wiki/GNU_C_Library). Actually these functions are wrappers for the system calls. We do not call system calls directly in our code, but using [wrapper](https://en.wikipedia.org/wiki/Wrapper_function) functions from the standard library. The main reason of this is simple: a system call must be performed quickly, very quickly. As a system call must be quick, it must be small. The standard library takes responsibility to perform system calls with the correct set parameters and makes different checks before it will call the given system call. Let's compile our program with the following command:
 
 ```
 $ gcc test.c -o test
@@ -178,13 +178,13 @@ The `ltrace` util displays a set of userspace calls of a program. The `fopen` fu
 write@SYS(1, "Hello World!\n\n", 14) = 14
 ```
 
-Yes, system calls are ubiquitous. Each program needs to open/write/read file, network connection, allocate memory and many other things that can be provided only by the kernel. The [proc](https://en.wikipedia.org/wiki/Procfs) file system contains special file in a format: `/proc/pid/systemcall` that exposes the system call number and argument registers for the system call currently being executed by the process. For example, pid 1, that is [systemd](https://en.wikipedia.org/wiki/Systemd) for me:
+Yes, system calls are ubiquitous. Each program needs to open/write/read file, network connection, allocate memory and many other things that can be provided only by the kernel. The [proc](https://en.wikipedia.org/wiki/Procfs) file system contains special files in a format: `/proc/pid/systemcall` that exposes the system call number and argument registers for the system call currently being executed by the process. For example, pid 1, that is [systemd](https://en.wikipedia.org/wiki/Systemd) for me:
 
 ```
 $ sudo cat /proc/1/comm
 systemd
 
-$ sudo cat /proc/1/syscall 
+$ sudo cat /proc/1/syscall
 232 0x4 0x7ffdf82e11b0 0x1f 0xffffffff 0x100 0x7ffdf82e11bf 0x7ffdf82e11a0 0x7f9114681193
 ```
 
@@ -197,7 +197,7 @@ $ ps ax | grep emacs
 $ sudo cat /proc/2093/comm
 emacs
 
-$ sudo cat /proc/2093/syscall 
+$ sudo cat /proc/2093/syscall
 270 0xf 0x7fff068a5a90 0x7fff068a5b10 0x0 0x7fff068a59c0 0x7fff068a59d0 0x7fff068a59b0 0x7f777dd8813c
 ```
 
@@ -244,7 +244,7 @@ As we can see the `SYSCALL_DEFINE3` macro takes `name` parameter which will repr
 * `SYSCALL_METADATA`;
 * `__SYSCALL_DEFINEx`.
 
-Implementation of the first macro `SYSCALL_METADATA` depends on the `CONFIG_FTRACE_SYSCALLS` kernel configuration option. As we can understand from the name of this option, it allows to enable tracer to catch the syscall entry and exit events. If this kernel configration option is enabled, the `SYSCALL_METADATA` macro executes initialization of the `syscall_metadata` structure that defined in the [include/trace/syscall.h](https://github.com/torvalds/linux/blob/master/include/trace/syscall.h) header file and contains different useful fields as name of a system call, number of a system call in the system call [table](https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl), number of parameters of a system call, list of parameter types and etc:
+Implementation of the first macro `SYSCALL_METADATA` depends on the `CONFIG_FTRACE_SYSCALLS` kernel configuration option. As we can understand from the name of this option, it allows to enable tracer to catch the syscall entry and exit events. If this kernel configuration option is enabled, the `SYSCALL_METADATA` macro executes initialization of the `syscall_metadata` structure that defined in the [include/trace/syscall.h](https://github.com/torvalds/linux/blob/master/include/trace/syscall.h) header file and contains different useful fields as name of a system call, number of a system call in the system call [table](https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl), number of parameters of a system call, list of parameter types and etc:
 
 ```C
 #define SYSCALL_METADATA(sname, nb, ...)                             \
@@ -296,7 +296,7 @@ The second macro `__SYSCALL_DEFINEx` expands to the definition of the five follo
         static inline long SYSC##name(__MAP(x,__SC_DECL,__VA_ARGS__))
 ```
 
-The first `sys##name` is definition of the syscall handler function with the given name - `sys_system_call_name`. The `__SC_DECL` macro takes the `__VA_ARGS__` and combines call input parameter system type and the parameter name, because the macro definition is unable to determine the parameter types. And the `__MAP` macro applyes `__SC_DECL` macro to the `__VA_ARGS__` arguments. The other functions that are generated by the `__SYSCALL_DEFINEx` macro are need to protect from the [CVE-2009-0029](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2009-0029) and we will not dive into details about this here. Ok, as result of the `SYSCALL_DEFINE3` macro, we will have:
+The first `sys##name` is definition of the syscall handler function with the given name - `sys_system_call_name`. The `__SC_DECL` macro takes the `__VA_ARGS__` and combines call input parameter system type and the parameter name, because the macro definition is unable to determine the parameter types. And the `__MAP` macro applies `__SC_DECL` macro to the `__VA_ARGS__` arguments. The other functions that are generated by the `__SYSCALL_DEFINEx` macro are need to protect from the [CVE-2009-0029](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2009-0029) and we will not dive into details about this here. Ok, as result of the `SYSCALL_DEFINE3` macro, we will have:
 
 ```C
 asmlinkage long sys_write(unsigned int fd, const char __user * buf, size_t count);
@@ -347,7 +347,7 @@ static inline loff_t file_pos_read(struct file *file)
 }
 ```
 
-and call the `vfs_write` function. The `vfs_write` function defined the [fs/read_write.c](https://github.com/torvalds/linux/blob/master/fs/read_write.c) source code file and does the work for us - writes given buffer to the given file starting from the given position. We will not dive into details about the `vfs_write` function, because this function is weakly related to the `system call` concept but mostly about [Virtual file system](https://en.wikipedia.org/wiki/Virtual_file_system) concept which we will see in another chapter. After the `vfs_write` has finished its work, we check the result and if it was finished successfully we change the position in the file with the `file_pos_write` function:
+and call the `vfs_write` function. The `vfs_write` function defined in the [fs/read_write.c](https://github.com/torvalds/linux/blob/master/fs/read_write.c) source code file and does the work for us - writes given buffer to the given file starting from the given position. We will not dive into details about the `vfs_write` function, because this function is weakly related to the `system call` concept but mostly about [Virtual file system](https://en.wikipedia.org/wiki/Virtual_file_system) concept which we will see in another chapter. After the `vfs_write` has finished its work, we check the result and if it was finished successfully we change the position in the file with the `file_pos_write` function:
 
 ```C
 if (ret >= 0)
@@ -380,7 +380,7 @@ Conclusion
 
 This concludes the first part covering system call concepts in the Linux kernel. We have covered the theory of system calls so far and in the next part we will continue to dive into this topic, touching Linux kernel code related to system calls.
 
-If you have questions or suggestions, feel free to ping me in twitter [0xAX](https://twitter.com/0xAX), drop me [email](anotherworldofworld@gmail.com) or just create [issue](https://github.com/0xAX/linux-internals/issues/new).
+If you have questions or suggestions, feel free to ping me in twitter [0xAX](https://twitter.com/0xAX), drop me [email](anotherworldofworld@gmail.com) or just create [issue](https://github.com/0xAX/linux-insides/issues/new).
 
 **Please note that English is not my first language and I am really sorry for any inconvenience. If you found any mistakes please send me PR to [linux-insides](https://github.com/0xAX/linux-insides).**
 

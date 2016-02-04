@@ -3,6 +3,7 @@ linux-insides
 
 Una serie de artículos acerca del kernel linux y su funcionamiento.
 
+<<<<<<< HEAD
 **La meta es simple** -  Compartir mi humilde conocimiento de los detalles
 del kernel linux con quien sea que esté interesado en aprenderlos, junto a
 otros temas de bajo nivel.
@@ -10,6 +11,11 @@ otros temas de bajo nivel.
 **Preguntas/Sugerencias**: No dudes en hacer cualquier pregunta o sugerencia
 contactandome en twitter [@veoleo95](https://twitter.com/veoleo95), reportando un
 problema, o simplemente enviandome un [correo](mailto:leolespaul@gmail.com)
+=======
+**The goal is simple** - to share my modest knowledge about the insides of the linux kernel and help people who are interested in linux kernel insides, and other low-level subject matter.
+
+**Questions/Suggestions**: Feel free about any questions or suggestions by pinging me at twitter [@0xAX](https://twitter.com/0xAX), adding an [issue](https://github.com/0xAX/linux-insides/issues/new) or just drop me an [email](mailto:anotherworldofworld@gmail.com).
+>>>>>>> upstream/master
 
 Soporte
 -------
@@ -19,8 +25,19 @@ de las siguientes formas:
 
 [![Flattr linux-insides](https://img.shields.io/badge/donate-flattr-green.svg)](https://flattr.com/submit/auto?user_id=0xAX&url=https://github.com/0xAX/linux-insides/&title=linux-insed) [![Support at gratipay](http://img.shields.io/gratipay/0xAX.svg)](https://gratipay.com/0xAX/) [![Support with bitcoin](https://img.shields.io/badge/donate-bitcoin-green.svg)](https://www.coinbase.com/checkouts/0bfa452a41cf52c0b3f99500b4f31685) [![Support via gitbook](https://img.shields.io/badge/donate-gitbook-green.svg)](https://gumroad.com/l/gitbook_54c9232c1db1670300055523?wanted=true)
 
+<<<<<<< HEAD
 LICENCIA
 --------
+=======
+On other languages
+-------------------
+
+  * [Chinese](https://github.com/MintCN/linux-insides-zh)
+  * [Spanish](https://github.com/leolas95/linux-insides)
+
+LICENSE
+-------------
+>>>>>>> upstream/master
 
 Licensed [BY-NC-SA Creative Commons](http://creativecommons.org/licenses/by-nc-sa/4.0/).
 

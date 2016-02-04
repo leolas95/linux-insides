@@ -3,6 +3,7 @@ Proceso de arranque del kernel. Parte 2.
 
 Primeros pasos en la configuración del kernel
 --------------------------------------------------------------------------------
+<<<<<<< HEAD:Arranque/linux-bootstrap-2.md
 En el [artículo anterior](linux-bootstrap-1.md), comenzamos a explorar el
 funcionamiento interno del kernel Linux, y vimos la parte inicial del código
 de configuración del kernel. Nos detuvimos en la primera llamada a la función
@@ -20,6 +21,21 @@ kernel, y también:
 Así que vayamos al grano.
 
 Modo protegido
+=======
+
+We started to dive into linux kernel insides in the previous [part](linux-bootstrap-1.md) and saw the initial part of the kernel setup code. We stopped at the first call to the `main` function (which is the first function written in C) from [arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c). 
+
+In this part we will continue to research the kernel setup code and 
+* see what `protected mode` is,
+* some preparation for the transition into it,
+* the heap and console initialization,
+* memory detection, cpu validation, keyboard initialization
+* and much much more.
+
+So, Let's go ahead.
+
+Protected mode
+>>>>>>> upstream/master:Booting/linux-bootstrap-2.md
 --------------------------------------------------------------------------------
 Antes de que podamos movernos al [Modo largo](https://es.wikipedia.org/wiki/Modo_largo)
 nativo de Intel64, el kernel debe pasar el CPU al modo protegido.
@@ -102,6 +118,7 @@ El esquema general de un descriptor es el siguiente:
 ------------------------------------------------------------
 ```
 
+<<<<<<< HEAD:Arranque/linux-bootstrap-2.md
 No te procupes, sé que luego del modo real, esto puede asustar un poco, pero
 en realidad es fácil. Por ejemplo, LIMIT 15:0 significa que el bit 0-15 del descriptor
 contiene el valor del límite. El resto está en LIMIT 16:19. Por lo tanto, el
@@ -144,6 +161,9 @@ atributo `Ex` (el bit 43), marcado como 0 en el diagrama de arriba. Si este es
 0, entonces el segmento es de datos; de otro modo, es de código.
 
 Un segmento puede ser de alguno de los siguientes tipos:
+=======
+Don't worry, I know it looks a little scary after real mode, but it's easy. For example LIMIT 15:0 means that bit 0-15 of the Descriptor contain the value for the limit. The rest of it is in LIMIT 19:16. So, the size of Limit is 0-19 i.e 20-bits. Let's take a closer look at it:
+>>>>>>> upstream/master:Booting/linux-bootstrap-2.md
 
 ```
 |           Tipo de campo     | Tipo del descriptor   | Descripción
@@ -192,9 +212,18 @@ o CRA (*C*onforming *R*eadable *A*ccessible / *C*onforme *L*ectura *A*ccesible).
   de lectura al segmento, de otro modo, no se permite. El permiso de escritura
   nunca está permitido en segmentos de código.
 
+<<<<<<< HEAD:Arranque/linux-bootstrap-2.md
 4. DPL [2 bits](https://courses.engr.illinois.edu/ece391/fa2014/references/descriptors.pdf)
 está en los bits 45-46. este define el nivel de privilegio del segmento. Puede ir
 de 0 hasta 3, donde 0 es el más privilegiado.
+=======
+As we can see the first bit(bit 43) is `0` for a _data_ segment and `1` for a _code_ segment. The next three bits(40, 41, 42, 43) are either `EWA`(*E*xpansion *W*ritable *A*ccessible) or CRA(*C*onforming *R*eadable *A*ccessible).
+  * if E(bit 42) is 0, expand up other wise expand down. Read more [here](http://www.sudleyplace.com/dpmione/expanddown.html).
+  * if W(bit 41)(for Data Segments) is 1, write access is allowed otherwise not. Note that read access is always allowed on data segments.
+  * A(bit 40) - Whether the segment is accessed by processor or not.
+  * C(bit 43) is conforming bit(for code selectors). If C is 1, the segment code can be executed from a lower level privilege e.g. user level. If C is 0, it can only be executed from the same privilege level.
+  * R(bit 41)(for code segments). If 1 read access to segment is allowed otherwise not. Write access is never allowed to code segments.
+>>>>>>> upstream/master:Booting/linux-bootstrap-2.md
 
 5. La bandera `P` (el bit 47) indica si el segmento está presente en memoria o
 no. Si `P` es 0, el segmento estará presente como _invalid_ y el procesador
@@ -280,9 +309,9 @@ GLOBAL(memcpy)
 ENDPROC(memcpy)
 ```
 
-Yeah, we just moved to C code and now assembly again :) First of all we can see that `memcpy` and other routines which are defined here, start and end with the two macros: `GLOBAL` and `ENDPROC`. `GLOBAL` is described in [arch/x86/include/asm/linkage.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/linkage.h) which defines `globl` directive and the label for it. `ENDPROC` is described in [include/linux/linkage.h](https://github.com/torvalds/linux/blob/master/include/linux/linkage.h) which marks `name` symbol as function name and ends with the size of the `name` symbol.
+Yeah, we just moved to C code and now assembly again :) First of all we can see that `memcpy` and other routines which are defined here, start and end with the two macros: `GLOBAL` and `ENDPROC`. `GLOBAL` is described in [arch/x86/include/asm/linkage.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/linkage.h) which defines `globl` directive and the label for it. `ENDPROC` is described in [include/linux/linkage.h](https://github.com/torvalds/linux/blob/master/include/linux/linkage.h) which marks the `name` symbol as a function name and ends with the size of the `name` symbol.
 
-Implementation of `memcpy` is easy. At first, it pushes values from `si` and `di` registers to the stack because their values will change during the `memcpy`, so it pushes them on the stack to preserve their values. `memcpy` (and other functions in copy.S) use `fastcall` calling conventions. So it gets its incoming parameters from the `ax`, `dx` and `cx` registers.  Calling `memcpy` looks like this:
+Implementation of `memcpy` is easy. At first, it pushes values from the `si` and `di` registers to the stack to preserve their values because they will change during the `memcpy`. `memcpy` (and other functions in copy.S) use `fastcall` calling conventions. So it gets its incoming parameters from the `ax`, `dx` and `cx` registers.  Calling `memcpy` looks like this:
 
 ```c
 memcpy(&boot_params.hdr, &hdr, sizeof hdr);
@@ -298,9 +327,9 @@ So,
 Console initialization
 --------------------------------------------------------------------------------
 
-After the `hdr` is copied into `boot_params.hdr`, the next step is console initialization by calling the `console_init` function which is defined in [arch/x86/boot/early_serial_console.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/early_serial_console.c).
+After `hdr` is copied into `boot_params.hdr`, the next step is console initialization by calling the `console_init` function which is defined in [arch/x86/boot/early_serial_console.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/early_serial_console.c).
 
-It tries to find the `earlyprintk` option in the command line and if the search was successful, it parses the port address and baud rate of the serial port and initializes the serial port. Value of `earlyprintk` command line option can be one of the:
+It tries to find the `earlyprintk` option in the command line and if the search was successful, it parses the port address and baud rate of the serial port and initializes the serial port. Value of `earlyprintk` command line option can be one of these:
 
 	* serial,0x3f8,115200
 	* serial,ttyS0,115200
@@ -330,7 +359,7 @@ void __attribute__((section(".inittext"))) putchar(int ch)
 
 `__attribute__((section(".inittext")))` means that this code will be in the `.inittext` section. We can find it in the linker file [setup.ld](https://github.com/torvalds/linux/blob/master/arch/x86/boot/setup.ld#L19).
 
-First of all, `put_char` checks for the `\n` symbol and if it is found, prints `\r` before. After that it outputs the character on the VGA screen by calling the BIOS with the `0x10` interrupt call:
+First of all, `putchar` checks for the `\n` symbol and if it is found, prints `\r` before. After that it outputs the character on the VGA screen by calling the BIOS with the `0x10` interrupt call:
 
 ```C
 static void __attribute__((section(".inittext"))) bios_putchar(int ch)
@@ -384,7 +413,7 @@ The next instruction multiplies `eax` with `0x01010101`. It needs to because `me
 
 The rest of the `memset` function does almost the same as `memcpy`.
 
-After that `biosregs` structure is filled with `memset`, `bios_putchar` calls the [0x10](http://www.ctyme.com/intr/rb-0106.htm) interrupt which prints a character. Afterwards it checks if the serial port was initialized or not and writes a character there with [serial_putchar](https://github.com/torvalds/linux/blob/master/arch/x86/boot/tty.c#L30) and `inb/outb` instructions if it was set.
+After the `biosregs` structure is filled with `memset`, `bios_putchar` calls the [0x10](http://www.ctyme.com/intr/rb-0106.htm) interrupt which prints a character. Afterwards it checks if the serial port was initialized or not and writes a character there with [serial_putchar](https://github.com/torvalds/linux/blob/master/arch/x86/boot/tty.c#L30) and `inb/outb` instructions if it was set.
 
 Heap initialization
 --------------------------------------------------------------------------------
@@ -407,7 +436,7 @@ Then there is the `heap_end` calculation:
 ```c
 	heap_end = (char *)((size_t)boot_params.hdr.heap_end_ptr + 0x200);
 ```
-which means `heap_end_ptr` or `_end` + `512`(`0x200h`). And at the last is checked that whether `heap_end` is greater than `stack_end`. If it is then `stack_end` is assigned to `heap_end` to make them equal.
+which means `heap_end_ptr` or `_end` + `512`(`0x200h`). The last check is whether `heap_end` is greater than `stack_end`. If it is then `stack_end` is assigned to `heap_end` to make them equal.
 
 Now the heap is initialized and we can use it using the `GET_HEAP` method. We will see how it is used, how to use it and how the it is implemented in the next posts.
 
@@ -548,7 +577,7 @@ Offset	Size	Description	)
  13h  3 BYTEs	"JPN"
  ```
 
-Next we call the `set_fs` routine and pass the value of the `es` register to it. Implementation of `set_fs` is pretty simple:
+Next we call the `set_fs` routine and pass the value of the `es` register to it. The implementation of `set_fs` is pretty simple:
 
 ```c
 static inline void set_fs(u16 seg)
@@ -559,15 +588,15 @@ static inline void set_fs(u16 seg)
 
 This function contains inline assembly which gets the value of the `seg` parameter and puts it into the `fs` register. There are many functions in [boot.h](https://github.com/torvalds/linux/blob/master/arch/x86/boot/boot.h) like `set_fs`, for example `set_gs`, `fs`, `gs` for reading a value in it etc...
 
-At the end of `query_mca` it just copies the table which pointed to by `es:bx` to the `boot_params.sys_desc_table`.
+At the end of `query_mca` it just copies the table pointed to by `es:bx` to the `boot_params.sys_desc_table`.
 
 The next step is getting [Intel SpeedStep](http://en.wikipedia.org/wiki/SpeedStep) information by calling the `query_ist` function. First of all it checks the CPU level and if it is correct, calls `0x15` for getting info and saves the result to `boot_params`.
 
-The following [query_apm_bios](https://github.com/torvalds/linux/blob/master/arch/x86/boot/apm.c#L21) function gets [Advanced Power Management](http://en.wikipedia.org/wiki/Advanced_Power_Management) information from the BIOS. `query_apm_bios` calls the `0x15` BIOS interruption too, but with `ah` = `0x53` to check `APM` installation. After the `0x15` execution, `query_apm_bios` functions checks `PM` signature (it must be `0x504d`), carry flag (it must be 0 if `APM` supported) and value of the `cx` register (if it's 0x02, protected mode interface is supported).
+The following [query_apm_bios](https://github.com/torvalds/linux/blob/master/arch/x86/boot/apm.c#L21) function gets [Advanced Power Management](http://en.wikipedia.org/wiki/Advanced_Power_Management) information from the BIOS. `query_apm_bios` calls the `0x15` BIOS interruption too, but with `ah` = `0x53` to check `APM` installation. After the `0x15` execution, `query_apm_bios` functions check the `PM` signature (it must be `0x504d`), carry flag (it must be 0 if `APM` supported) and value of the `cx` register (if it's 0x02, protected mode interface is supported).
 
-Next it calls the `0x15` again, but with `ax = 0x5304` for disconnecting the `APM` interface and connecting the 32-bit protected mode interface. In the end it fills `boot_params.apm_bios_info` with values obtained from the BIOS.
+Next it calls `0x15` again, but with `ax = 0x5304` for disconnecting the `APM` interface and connecting the 32-bit protected mode interface. In the end it fills `boot_params.apm_bios_info` with values obtained from the BIOS.
 
-Note that `query_apm_bios` will be executed only if `CONFIG_APM` or `CONFIG_APM_MODULE` was set in configuration file:
+Note that `query_apm_bios` will be executed only if `CONFIG_APM` or `CONFIG_APM_MODULE` was set in the configuration file:
 
 ```C
 #if defined(CONFIG_APM) || defined(CONFIG_APM_MODULE)
@@ -577,7 +606,7 @@ Note that `query_apm_bios` will be executed only if `CONFIG_APM` or `CONFIG_APM_
 
 The last is the [`query_edd`](https://github.com/torvalds/linux/blob/master/arch/x86/boot/edd.c#L122) function, which queries `Enhanced Disk Drive` information from the BIOS. Let's look into the `query_edd` implementation.
 
-First of all it reads the [edd](https://github.com/torvalds/linux/blob/master/Documentation/kernel-parameters.txt#L1023) option from kernel's command line and if it was set to `off` then `query_edd` just returns.
+First of all it reads the [edd](https://github.com/torvalds/linux/blob/master/Documentation/kernel-parameters.txt#L1023) option from the kernel's command line and if it was set to `off` then `query_edd` just returns.
 
 If EDD is enabled, `query_edd` goes over BIOS-supported hard disks and queries EDD information in the following loop:
 
@@ -598,11 +627,11 @@ where `0x80` is the first hard drive and the value of `EDD_MBR_SIG_MAX` macro is
 Conclusion
 --------------------------------------------------------------------------------
 
-This is the end of the second part about Linux kernel internals. In the next part we will see video mode setting and the rest of preparations before transition to protected mode and directly transitioning into it.
+This is the end of the second part about Linux kernel insides. In the next part we will see video mode setting and the rest of preparations before transition to protected mode and directly transitioning into it.
 
 If you have any questions or suggestions write me a comment or ping me at [twitter](https://twitter.com/0xAX).
 
-**Please note that English is not my first language, And I am really sorry for any inconvenience. If you found any mistakes please send me a PR to [linux-internals](https://github.com/0xAX/linux-internals).**
+**Please note that English is not my first language, And I am really sorry for any inconvenience. If you find any mistakes please send me a PR to [linux-insides](https://github.com/0xAX/linux-internals).**
 
 Links
 --------------------------------------------------------------------------------
