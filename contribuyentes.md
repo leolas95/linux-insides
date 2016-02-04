@@ -69,10 +69,7 @@ Gracias a todos los contribuyentes:
 * [Johan Manuel](https://github.com/29jm)
 * [Brian Rak](https://github.com/brakthehack)
 * [Robin Peiremans](https://github.com/rpeiremans)
-<<<<<<< HEAD:contribuyentes.md
 * [Leonardo Guedez](https://github.com/leolas95)
-
-=======
 * [xiaoqiang zhao](https://github.com/hitmoon)
 * [aouelete](https://github.com/aouelete)
 * [Dennis Birkholz](https://github.com/dennisbirkholz)
@@ -83,4 +80,3 @@ Gracias a todos los contribuyentes:
 * [Jeremy Lacomis](https://github.com/jlacomis)
 * [Dubyah](https://github.com/Dubyah)
 * [Matthieu Tardy](https://github.com/c0riolis)
->>>>>>> upstream/master:contributors.md
