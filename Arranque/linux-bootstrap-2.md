@@ -69,10 +69,10 @@ La segmentación de memoria fue completamente rehecha en el modo protegido. Ya n
 con un tamaño fijo de 64 Kilobytes. En cambio, el tamaño y la ubicación de cada segmento
 es descrito por una estructura de datos asociada, llamada _Descriptor de segmento_. Los
 descriptores de segmento están almacenados en una estructura de datos llamada
-`Tabla Global de Descriptores (TGD)`
+`Tabla Global de Descriptores (TGD)` (del inglés `Global Descriptor Table`, GDT)
 
 La TGD es una estructura que reside en memoria. No tiene un lugar fijo en esta, por lo que su
-dirección es almacenada en un registro especial llamado `GDTR`. Más adelante
+dirección es almacenada en un registro especial llamado `GDTR` (Global Descriptor Table Register). Más adelante
 veremos la carga de la TGD en el código del kernel de Linux. Hay una operación
 para cargarla en memoria, que sería algo como:
 
@@ -213,43 +213,53 @@ modo de 64 bits.
 16/32 bits. Si está encendida, entonces este será de 32 bits, de otro modo, será de 16.
 
 
-Segment registers don't contain the base address of the segment as in real mode. Instead they contain a special structure - `Segment Selector`. Each Segment Descriptor has an associated Segment Selector. `Segment Selector` is a 16-bit structure:
+Los registro de segmentos no contienen la dirección base del segmento, como en el modo real. En cambio ellos contienen una estructura especial - `Selector de Segmento`. Cada Descriptor de Segmento tiene asociado un Selector de Segmento. `Selector de Segmento` es una estructura de 16 bits:
 
 ```
 -----------------------------
-|       Index    | TI | RPL |
+|       Índice    | IT | NPS |
 -----------------------------
 ```
+Donde:
+* **Índice** muestra el número de índice del descriptor respectivo en la TGD.
+* **IT**(Indicador de Tabla) muestra en dónde buscar el descriptor. Si es 0, se busca en la Tabla Global de Descriptores (TGD), sino, en la Tabla Local de Descriptores (TLD).
+* Y **NPS** es el Nivel de Privilegio del Solicitante (del inglés Requester's Privilege Level, RPL).
 
-Where,
-* **Index** shows the index number of the descriptor in the GDT.
-* **TI**(Table Indicator) shows where to search for the descriptor. If it is 0 then search in the Global Descriptor Table(GDT) otherwise it will look in Local Descriptor Table(LDT).
-* And **RPL** is Requester's Privilege Level.
 
-Every segment register has a visible and hidden part.
-* Visible - Segment Selector is stored here
-* Hidden - Segment Descriptor(base, limit, attributes, flags)
+Cada registro de segmento tiene una parte visible y otra oculta.
+* Visible - El Selector de Segmento se almacena aquí.
+* Oculta - Es para el Descriptor de Segmento (la base, el límite, los atributos, banderas).
 
-The following steps are needed to get the physical address in the protected mode:
+Para obtener la dirección física en el modo protegido se realizan los siguientes pasos:
 
-* The segment selector must be loaded in one of the segment registers
-* The CPU tries to find a segment descriptor by GDT address + Index from selector and load the descriptor into the *hidden* part of the segment register
-* Base address (from segment descriptor) + offset will be the linear address of the segment which is the physical address (if paging is disabled).
+* El selector de segmento debe ser cargado en alguno de los registros de segmento.
+* La CPU intenta encontrar un descriptor de segmento mediante la dirección de la TGD + el Índice desde el selector de segmento, y carga dicho descriptor en la parte *oculta* del registro de segmento.
+* La dirección base (desde el descriptor de segmento) + el *offset* será la dirección lineal del segmento que representa la dirección física (si el paginado está deshabilitado).
 
-Schematically it will look like this:
+
+Esquemáticamente, esto luce así:
 
 ![linear address](http://oi62.tinypic.com/2yo369v.jpg)
 
-The algorithm for the transition from real mode into protected mode is:
+El algoritmo para la transición desde el modo real al modo protegido es el siguiente:
 
-* Disable interrupts
-* Describe and load GDT with `lgdt` instruction
-* Set PE (Protection Enable) bit in CR0 (Control Register 0)
-* Jump to protected mode code
+* Deshabilitar los interruptores.
+* Describir y cargar la TGD con la instrucción `lgdt`.
+* Establecer el bit PE (del inglés *Protection Enable*, *Establecer Protección*) a CR0 (*Control Register 0*, *Control de Registro 0*).
+* Saltar al código del modo protegido.
 
+En la siguiente parte veremos la transición completa al modo protegido en el kernel linux, pero antes de que pasemos a dicho modo, necesitamos hacer algunas preparaciones adicionales.
 We will see the complete transition to protected mode in the linux kernel in the next part, but before we can move to protected mode, we need to do some more preparations.
 
-Let's look at [arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c). We can see some routines there which perform keyboard initialization, heap initialization, etc... Let's take a look.
+Observemos el archivo [arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c). Podremos ver algunas rutinas encargadas de la inicialización del teclado, del montón, etc... Demos un vistazo a esto.
+
+Copiando los parámetros del arranque en la "zeropage (página zero)"
+--------------------------------------------------------------------------------
+
+Iniciaremos desde la rutina `main` en el archivo "main.c". La primera función en ser llamada `main` es [`copy_boot_params(void)`](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c#L30). Esta copia el encabezado de configuración del kernel en el campo de la estructura `boot_params`, la cual está definida en el archivo [arch/x86/include/uapi/asm/bootparam.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/uapi/asm/bootparam.h#L113).
+
+La estructura `boot_params` contiene el campo `struct setup_header hdr`. Esta estructura contiene los mismos campos definidos en el [protocolo de arranque de linux](https://www.kernel.org/doc/Documentation/x86/boot.txt), y es rellenada por el cargador de arranque y también en tiempo de compilación del kernel. `copy_boot_params` hace dos cosas:
+
 
 Copying boot parameters into the "zeropage"
 --------------------------------------------------------------------------------
