@@ -268,11 +268,13 @@ We will start from the `main` routine in "main.c". First function which is calle
 
 The `boot_params` structure contains the `struct setup_header hdr` field. This structure contains the same fields as defined in [linux boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt) and is filled by the boot loader and also at kernel compile/build time. `copy_boot_params` does two things:
 
-1. Copies `hdr` from [header.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L281) to the `boot_params` structure in `setup_header` field
+1. Copia `hdr` desde [header.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L281) a la estructura
+`boot_params` en el campo `setup_header`.
 
-2. Updates pointer to the kernel command line if the kernel was loaded with the old command line protocol.
+2. Actualiza el apuntador a la línea de comandos del kernel si este fue cargado con el antiguo protocolo de línea de comandos.
 
-Note that it copies `hdr` with `memcpy` function which is defined in the [copy.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/copy.S) source file. Let's have a look inside:
+Es de notar que copia `hdr` con la función `memcpy`, que está definida en el archivo fuente [copy.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/copy.S). Echemosle un vistazo:
+
 
 ```assembly
 GLOBAL(memcpy)
@@ -292,9 +294,11 @@ GLOBAL(memcpy)
 ENDPROC(memcpy)
 ```
 
-Yeah, we just moved to C code and now assembly again :) First of all we can see that `memcpy` and other routines which are defined here, start and end with the two macros: `GLOBAL` and `ENDPROC`. `GLOBAL` is described in [arch/x86/include/asm/linkage.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/linkage.h) which defines `globl` directive and the label for it. `ENDPROC` is described in [include/linux/linkage.h](https://github.com/torvalds/linux/blob/master/include/linux/linkage.h) which marks the `name` symbol as a function name and ends with the size of the `name` symbol.
+Si... acababamos de movernos a código en C y ahora de nuevo a ensamblador :) Primero que todo, podemos ver que `memcpy` y otras rutinas que están definidas aquí comienzan y terminan con dos macros `GLOBAL` y `ENDPROC`. `GLOBAL`es descrita en [arch/x86/include/asm/linkage.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/linkage.h), donde se define la
+directiva `globl` y la etiqueta para esta. `ENDPROC` es descrita en [include/linux/linkage.h](https://github.com/torvalds/linux/blob/master/include/linux/linkage.h), donde se marca el símbolo `name`
+como un nombre de función, y termina con el tamaño del símbolo `name`.
 
-Implementation of `memcpy` is easy. At first, it pushes values from the `si` and `di` registers to the stack to preserve their values because they will change during the `memcpy`. `memcpy` (and other functions in copy.S) use `fastcall` calling conventions. So it gets its incoming parameters from the `ax`, `dx` and `cx` registers.  Calling `memcpy` looks like this:
+La implementación de `memcpy` es fácil. Primero, se meten los valors de los registros `si` y `di` a la pila para preservar sus valores, porque estos cambiarán durante `memcpy`. `memcpy` (y otras funciones en copy.S) usan `fastcall` (ver [fastcall](https://msdn.microsoft.com/en-us/library/6xa169sk.aspx)) como convención de llamadas. Recibe sus parámetros de entrada de los registros `ax`, `dx` y `cx`. Llamar a `memcpy` se ve así:
 
 ```c
 memcpy(&boot_params.hdr, &hdr, sizeof hdr);
