@@ -4,7 +4,7 @@ CPU masks
 Introduction
 --------------------------------------------------------------------------------
 
-`Cpumasks` is a special way provided by the Linux kernel to store information about CPUs in the system. The relevant source code and header files which are contains API for `Cpumasks` manipulating:
+`Cpumasks` is a special way provided by the Linux kernel to store information about CPUs in the system. The relevant source code and header files which contains API for `Cpumasks` manipulation:
 
 * [include/linux/cpumask.h](https://github.com/torvalds/linux/blob/master/include/linux/cpumask.h)
 * [lib/cpumask.c](https://github.com/torvalds/linux/blob/master/lib/cpumask.c)
@@ -27,7 +27,7 @@ There are two ways for a `cpumask` creation. First is to use `cpumask_t`. It is 
 typedef struct cpumask { DECLARE_BITMAP(bits, NR_CPUS); } cpumask_t;
 ```
 
-It wraps the `cpumask` structure which contains one bitmak `bits` field. The `DECLARE_BITMAP` macro gets two parameters:
+It wraps the `cpumask` structure which contains one bitmask `bits` field. The `DECLARE_BITMAP` macro gets two parameters:
 
 * bitmap name;
 * number of bits.
@@ -46,7 +46,7 @@ where `BITS_TO_LONGS`:
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
 ```
 
-As we are focussing on the `x86_64` architecture, `unsigned long` is 8-bytes size and our array will contain only one element:
+As we are focusing on the `x86_64` architecture, `unsigned long` is 8-bytes size and our array will contain only one element:
 
 ```
 (((8) + (8) - 1) / (8)) = 1

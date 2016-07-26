@@ -120,11 +120,11 @@ idtentry int3 do_int3 has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK
 
 Actually `debug` and `int3` are not interrupts handlers. Remember that before we can execute an interrupt/exception handler, we need to do some preparations as:
 
-* When an interrupt or exception occured, the processor uses an exception or interrupt vector as an index to a descriptor in the `IDT`;
+* When an interrupt or exception occurred, the processor uses an exception or interrupt vector as an index to a descriptor in the `IDT`;
 * In legacy mode `ss:esp` registers are pushed on the stack only if privilege level changed. In 64-bit mode `ss:rsp` pushed on the stack everytime;
 * During stack switching with `IST` the new `ss` selector is forced to null. Old `ss` and `rsp` are pushed on the new stack.
 * The `rflags`, `cs`, `rip` and error code pushed on the stack;
-* Control transfered to an interrupt handler;
+* Control transferred to an interrupt handler;
 * After an interrupt handler will finish its work and finishes with the `iret` instruction, old `ss` will be poped from the stack and loaded to the `ss` register.
 * `ss:rsp` will be popped from the stack unconditionally in the 64-bit mode and will be popped only if there is a privilege level change in legacy mode.
 * `iret` instruction will restore `rip`, `cs` and `rflags`;
@@ -215,7 +215,7 @@ With the `pushq \reg` we denote that place before the `RIP` will contain error c
 #define ORIG_RAX	15*8
 ```
 
-The `ORIG_RAX` will contain error code of an exception, [IRQ](http://en.wikipedia.org/wiki/Interrupt_request_%28PC_architecture%29) number on a hardware interrupt and system call number on [system call](http://en.wikipedia.org/wiki/System_call) entry. In the next step we can see thr `ALLOC_PT_GPREGS_ON_STACK` macro which allocates space for the 15 general purpose registers on the stack:
+The `ORIG_RAX` will contain error code of an exception, [IRQ](http://en.wikipedia.org/wiki/Interrupt_request_%28PC_architecture%29) number on a hardware interrupt and system call number on [system call](http://en.wikipedia.org/wiki/System_call) entry. In the next step we can see the `ALLOC_PT_GPREGS_ON_STACK` macro which allocates space for the 15 general purpose registers on the stack:
 
 ```assembly
 .macro ALLOC_PT_GPREGS_ON_STACK addskip=0
@@ -407,7 +407,7 @@ exit:
 ```
 
 If we came not from the virtual 8086 mode, we need to check `dr6` register and previous mode as we did it above. Here we check if step mode debugging is
-enabled and we are not from the user mode, we enabled step mode debugging in the `dr6` copy in the current thread, set `TIF_SINGLE_STEP` falg and re-enable [Trap flag](https://en.wikipedia.org/wiki/Trap_flag) for the user mode:
+enabled and we are not from the user mode, we enabled step mode debugging in the `dr6` copy in the current thread, set `TIF_SINGLE_STEP` flag and re-enable [Trap flag](https://en.wikipedia.org/wiki/Trap_flag) for the user mode:
 
 ```C
 if ((dr6 & DR_STEP) && !user_mode(regs)) {
@@ -443,7 +443,7 @@ That's all.
 Conclusion
 --------------------------------------------------------------------------------
 
-It is the end of the third part about interrupts and interrupt handling in the Linux kernel. We saw the initialization of the [Interrupt descriptor table](https://en.wikipedia.org/wiki/Interrupt_descriptor_table) in the previous part with the `#DB` and `#BP` gates and started to dive into preparation before control will be transfered to an exception handler and implementation of some interrupt handlers in this part. In the next part we will continue to dive into this theme and will go next by the `setup_arch` function and will try to understand interrupts handling related stuff.
+It is the end of the third part about interrupts and interrupt handling in the Linux kernel. We saw the initialization of the [Interrupt descriptor table](https://en.wikipedia.org/wiki/Interrupt_descriptor_table) in the previous part with the `#DB` and `#BP` gates and started to dive into preparation before control will be transferred to an exception handler and implementation of some interrupt handlers in this part. In the next part we will continue to dive into this theme and will go next by the `setup_arch` function and will try to understand interrupts handling related stuff.
 
 If you have any questions or suggestions write me a comment or ping me at [twitter](https://twitter.com/0xAX).
 

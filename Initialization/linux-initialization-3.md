@@ -71,7 +71,7 @@ extern char __initdata boot_command_line[];
 
 After this we will have copied kernel command line and `boot_params` structure. In the next step we can see call of the `load_ucode_bsp` function which loads processor microcode, but we will not see it here.
 
-After microcode was loaded we can see the check of the `console_loglevel` and the `early_printk` function which prints `Kernel Alive` string. But you'll never see this output because `early_printk` is not initilized yet. It is a minor bug in the kernel and i sent the patch - [commit](http://git.kernel.org/cgit/linux/kernel/git/tip/tip.git/commit/?id=91d8f0416f3989e248d3a3d3efb821eda10a85d2) and you will see it in the mainline soon. So you can skip this code.
+After microcode was loaded we can see the check of the `console_loglevel` and the `early_printk` function which prints `Kernel Alive` string. But you'll never see this output because `early_printk` is not initialized yet. It is a minor bug in the kernel and i sent the patch - [commit](http://git.kernel.org/cgit/linux/kernel/git/tip/tip.git/commit/?id=91d8f0416f3989e248d3a3d3efb821eda10a85d2) and you will see it in the mainline soon. So you can skip this code.
 
 Move on init pages
 --------------------------------------------------------------------------------
@@ -170,9 +170,9 @@ if (!boot_params.hdr.version)
 	copy_bootdata(__va(real_mode_data));
 ```
 
-and if it is zero we call `copy_bootdata` function again with the virtual address of the `real_mode_data` (read about about it's implementation).
+and if it is zero we call `copy_bootdata` function again with the virtual address of the `real_mode_data` (read about its implementation).
 
-In the next step we can see the call of the `reserve_ebda_region` function which defined in the [arch/x86/kernel/head.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head.c). This function reserves memory block for th `EBDA` or Extended BIOS Data Area. The Extended BIOS Data Area located in the top of conventional memory and contains data about ports, disk parameters and etc...
+In the next step we can see the call of the `reserve_ebda_region` function which defined in the [arch/x86/kernel/head.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head.c). This function reserves memory block for the `EBDA` or Extended BIOS Data Area. The Extended BIOS Data Area located in the top of conventional memory and contains data about ports, disk parameters and etc...
 
 Let's look on the `reserve_ebda_region` function. It starts from the checking is paravirtualization enabled or not:
 
@@ -324,7 +324,7 @@ struct memblock memblock __initdata_memblock = {
 };
 ```
 
-We will not dive into detail of this varaible, but we will see all details about it in the parts about memory manager. Just note that `memblock` variable defined with the `__initdata_memblock` which is:
+We will not dive into detail of this variable, but we will see all details about it in the parts about memory manager. Just note that `memblock` variable defined with the `__initdata_memblock` which is:
 
 ```C
 #define __initdata_memblock __meminitdata
@@ -344,7 +344,7 @@ After debugging lines were printed next is the call of the following function:
 memblock_add_range(_rgn, base, size, nid, flags);
 ```
 
-which adds new memory block region into the `.meminit.data` section. As we do not initlieze `_rgn` but it just contains `&memblock.reserved`, we just fill passed `_rgn` with the base address of the extended BIOS data area region, size of this region and flags:
+which adds new memory block region into the `.meminit.data` section. As we do not initialize `_rgn` but it just contains `&memblock.reserved`, we just fill passed `_rgn` with the base address of the extended BIOS data area region, size of this region and flags:
 
 ```C
 if (type->regions[0].size == 0) {

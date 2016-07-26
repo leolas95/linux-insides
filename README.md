@@ -1,7 +1,7 @@
 linux-insides
 ==============
 
-Una serie de artículos acerca del kernel linux y su funcionamiento.
+Un libro (en progreso) acerca del kernel linux y su funcionamiento.
 
 **La meta es simple** -  Compartir mi humilde conocimiento de los detalles
 del kernel linux con quien sea que esté interesado en aprenderlos, junto a
@@ -17,7 +17,7 @@ Soporte
 **Soporte** Si te gusta `linux-insides`, puedes apoyar al **autor original**
 de las siguientes formas:
 
-[![Flattr linux-insides](https://img.shields.io/badge/donate-flattr-green.svg)](https://flattr.com/submit/auto?user_id=0xAX&url=https://github.com/0xAX/linux-insides/&title=linux-insed) [![Support at gratipay](http://img.shields.io/gratipay/0xAX.svg)](https://gratipay.com/0xAX/) [![Support with bitcoin](https://img.shields.io/badge/donate-bitcoin-green.svg)](https://www.coinbase.com/checkouts/0bfa452a41cf52c0b3f99500b4f31685) [![Support via gitbook](https://img.shields.io/badge/donate-gitbook-green.svg)](https://gumroad.com/l/gitbook_54c9232c1db1670300055523?wanted=true)
+[![Flattr linux-insides](https://img.shields.io/badge/donate-flattr-green.svg)](https://flattr.com/submit/auto?user_id=0xAX&url=https://github.com/0xAX/linux-insides/&title=linux-insed) [![Support at gratipay](https://img.shields.io/gratipay/0xAX.svg)](https://gratipay.com/~0xAX/) [![Support with bitcoin](https://img.shields.io/badge/donate-bitcoin-green.svg)](https://www.coinbase.com/checkouts/0bfa452a41cf52c0b3f99500b4f31685) [![Support via gitbook](https://img.shields.io/badge/donate-gitbook-green.svg)](https://gumroad.com/l/gitbook_54c9232c1db1670300055523?wanted=true) [![Join the chat at https://gitter.im/0xAX/linux-insides](https://badges.gitter.im/0xAX/linux-insides.svg)](https://gitter.im/0xAX/linux-insides?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 LICENCIA
 --------
