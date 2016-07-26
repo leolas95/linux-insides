@@ -260,14 +260,6 @@ Iniciaremos desde la rutina `main` en el archivo "main.c". La primera función e
 
 La estructura `boot_params` contiene el campo `struct setup_header hdr`. Esta estructura contiene los mismos campos definidos en el [protocolo de arranque de linux](https://www.kernel.org/doc/Documentation/x86/boot.txt), y es rellenada por el cargador de arranque y también en tiempo de compilación del kernel. `copy_boot_params` hace dos cosas:
 
-
-Copying boot parameters into the "zeropage"
---------------------------------------------------------------------------------
-
-We will start from the `main` routine in "main.c". First function which is called in `main` is [`copy_boot_params(void)`](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c#L30). It copies the kernel setup header into the field of the `boot_params` structure which is defined in the [arch/x86/include/uapi/asm/bootparam.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/uapi/asm/bootparam.h#L113).
-
-The `boot_params` structure contains the `struct setup_header hdr` field. This structure contains the same fields as defined in [linux boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt) and is filled by the boot loader and also at kernel compile/build time. `copy_boot_params` does two things:
-
 1. Copia `hdr` desde [header.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L281) a la estructura
 `boot_params` en el campo `setup_header`.
 
@@ -294,9 +286,7 @@ GLOBAL(memcpy)
 ENDPROC(memcpy)
 ```
 
-Si... acababamos de movernos a código en C y ahora de nuevo a ensamblador :) Primero que todo, podemos ver que `memcpy` y otras rutinas que están definidas aquí comienzan y terminan con dos macros `GLOBAL` y `ENDPROC`. `GLOBAL`es descrita en [arch/x86/include/asm/linkage.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/linkage.h), donde se define la
-directiva `globl` y la etiqueta para esta. `ENDPROC` es descrita en [include/linux/linkage.h](https://github.com/torvalds/linux/blob/master/include/linux/linkage.h), donde se marca el símbolo `name`
-como un nombre de función, y termina con el tamaño del símbolo `name`.
+Si... justo cuando acababamos de movernos a código en C, y ahora de nuevo a ensamblador :) Primero que todo, podemos ver que `memcpy` y otras rutinas que están definidas aquí comienzan y terminan con dos macros `GLOBAL` y `ENDPROC`. `GLOBAL`es descrita en [arch/x86/include/asm/linkage.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/linkage.h), donde se define la directiva `globl` con su respectiva etiqueta. `ENDPROC` es descrita en [include/linux/linkage.h](https://github.com/torvalds/linux/blob/master/include/linux/linkage.h), donde se marca el símbolo `name` como un nombre de función, y termina con el tamaño del símbolo `name`.
 
 La implementación de `memcpy` es fácil. Primero, se meten los valors de los registros `si` y `di` a la pila para preservar sus valores, porque estos cambiarán durante `memcpy`. `memcpy` (y otras funciones en copy.S) usan `fastcall` (ver [fastcall](https://msdn.microsoft.com/en-us/library/6xa169sk.aspx)) como convención de llamadas. Recibe sus parámetros de entrada de los registros `ax`, `dx` y `cx`. Llamar a `memcpy` se ve así:
 
@@ -304,32 +294,32 @@ La implementación de `memcpy` es fácil. Primero, se meten los valors de los re
 memcpy(&boot_params.hdr, &hdr, sizeof hdr);
 ```
 
-So,
-* `ax` will contain the address of the `boot_params.hdr` in bytes
-* `dx` will contain the address of `hdr` in bytes
-* `cx` will contain the size of `hdr` in bytes.
+Así:
+* `ax` contendrá la dirección en bytes de `boot_params.hdr`
+* `dx` conentdrá la dirección en bytes de `hdr`
+* `cx` contendrá el tamaño de `hdr` en bytes
 
-`memcpy` puts the address of `boot_params.hdr` into `si` and saves the size on the stack. After this it shifts to the right on 2 size (or divide on 4) and copies from `si` to `di` by 4 bytes. After this we restore the size of `hdr` again, align it by 4 bytes and copy the rest of the bytes from `si` to `di` byte by byte (if there is more). Restore `si` and `di` values from the stack in the end and after this copying is finished.
+`memcpy` coloca la dirección de `boot_params.hdr` en el registro `si`, y guarda su tamaño en la pila. Luego lo corre hacia la derecha dos espacios (lo que tiene el efecto de dividir entre 2^2 = 4) y copia 4 bytes de `si` hacia `di`. Luego de esto restauramos nuevamente el tamaño de `hdr`, lo alineamos a 4 bytes y copiamos el resto de los bytes (si es que hay más) desde `si` hacia `di`, uno por uno. Al final restauramos los valores de  `si` y `di` de la pila, y con esto se termina el copiado.
 
-Console initialization
+Inicialización de la consola
 --------------------------------------------------------------------------------
 
-After `hdr` is copied into `boot_params.hdr`, the next step is console initialization by calling the `console_init` function which is defined in [arch/x86/boot/early_serial_console.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/early_serial_console.c).
+Luego de que `hdr` es copiado en `boot_params.hdr`, el siguiente paso es inicializar la consola, llamando a la función `console_init`, la cual está definida en [arch/x86/boot/early_serial_console.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/early_serial_console.c).
 
-It tries to find the `earlyprintk` option in the command line and if the search was successful, it parses the port address and baud rate of the serial port and initializes the serial port. Value of `earlyprintk` command line option can be one of these:
+Esta intenta buscar la opción `earlyprintk` en la línea de comandos, y si la búsqueda tiene éxito, parsea la dirección del puerto y la [tasa de baudios](https://es.wikipedia.org/wiki/Tasa_de_baudios) del puerto serial y lo inicializa. El valor de la opción `earlyprintk` en la línea de comandos puede ser uno de los siguientes:
 
-	* serial,0x3f8,115200
-	* serial,ttyS0,115200
-	* ttyS0,115200
+* serial,0x3f8,115200
+* serial,ttyS0,115200
+* ttyS0,115200
 
-After serial port initialization we can see the first output:
+Luego de la inicialización del puerto serial, podemos ver la primera salida por pantalla:
 
 ```C
 if (cmdline_find_option_bool("debug"))
 		puts("early console in setup code\n");
 ```
 
-The definition of `puts` is in [tty.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/tty.c). As we can see it prints character by character in a loop by calling the `putchar` function. Let's look into the `putchar` implementation:
+La definición de `puts` está en [tty.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/tty.c). Como podemos observar, esta recibe como argumento un `char *`, y lo imprime caracter por caracter, en un ciclo, llamando cada vez a la función `putchar`. Veamos la implementación de `putchar`:
 
 ```C
 void __attribute__((section(".inittext"))) putchar(int ch)
@@ -344,9 +334,9 @@ void __attribute__((section(".inittext"))) putchar(int ch)
 }
 ```
 
-`__attribute__((section(".inittext")))` means that this code will be in the `.inittext` section. We can find it in the linker file [setup.ld](https://github.com/torvalds/linux/blob/master/arch/x86/boot/setup.ld#L19).
+`__attribute__((section(".inittext")))` significa que este código estará en la sección `.inittext`. Podemos encontrarlo en el archivo [setup.ld](https://github.com/torvalds/linux/blob/master/arch/x86/boot/setup.ld#L19).
 
-First of all, `putchar` checks for the `\n` symbol and if it is found, prints `\r` before. After that it outputs the character on the VGA screen by calling the BIOS with the `0x10` interrupt call:
+Primero que todo, `putchar` revisa por el caracter `\n`, y si lo encuentra, imprime `\r` antes que él. Luego imprime el caracter (`\n`) en la [pantalla VGA](https://es.wikipedia.org/wiki/Video_Graphics_Array), llamando al BIOS con la [llamada de interrución](https://es.wikipedia.org/wiki/Llamada_de_interrupci%C3%B3n_del_BIOS) `0x10`.
 
 ```C
 static void __attribute__((section(".inittext"))) bios_putchar(int ch)
@@ -362,7 +352,7 @@ static void __attribute__((section(".inittext"))) bios_putchar(int ch)
 }
 ```
 
-Here `initregs` takes the `biosregs` structure and first fills `biosregs` with zeros using the `memset` function and then fills it with register values.
+Aquí `initregs` toma la estructura `biosregs` y la llena con ceros usando la función `memset` (`initregs`, mostrada aquí, usa `memset`. Véase [initregs](http://lxr.free-electrons.com/source/arch/x86/boot/regs.c#L22)), y luego la llena con los valores de los registros.
 
 ```C
 	memset(reg, 0, sizeof *reg);
@@ -373,7 +363,7 @@ Here `initregs` takes the `biosregs` structure and first fills `biosregs` with z
 	reg->gs = gs();
 ```
 
-Let's look at the [memset](https://github.com/torvalds/linux/blob/master/arch/x86/boot/copy.S#L36) implementation:
+Veamos la implementación de [memset](https://github.com/torvalds/linux/blob/master/arch/x86/boot/copy.S#L36):
 
 ```assembly
 GLOBAL(memset)
