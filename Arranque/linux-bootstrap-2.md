@@ -288,7 +288,7 @@ ENDPROC(memcpy)
 
 Si... justo cuando acababamos de movernos a código en C, y ahora de nuevo a ensamblador :) Primero que todo, podemos ver que `memcpy` y otras rutinas que están definidas aquí comienzan y terminan con dos macros `GLOBAL` y `ENDPROC`. `GLOBAL`es descrita en [arch/x86/include/asm/linkage.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/linkage.h), donde se define la directiva `globl` con su respectiva etiqueta. `ENDPROC` es descrita en [include/linux/linkage.h](https://github.com/torvalds/linux/blob/master/include/linux/linkage.h), donde se marca el símbolo `name` como un nombre de función, y termina con el tamaño del símbolo `name`.
 
-La implementación de `memcpy` es fácil. Primero, se meten los valors de los registros `si` y `di` a la pila para preservar sus valores, porque estos cambiarán durante `memcpy`. `memcpy` (y otras funciones en copy.S) usan `fastcall` (ver [fastcall](https://msdn.microsoft.com/en-us/library/6xa169sk.aspx)) como convención de llamadas. Recibe sus parámetros de entrada de los registros `ax`, `dx` y `cx`. Llamar a `memcpy` se ve así:
+La implementación de `memcpy` es fácil. Primero, se meten los valores de los registros `si` y `di` a la pila para preservar sus valores, porque estos cambiarán durante `memcpy`. `memcpy` (y otras funciones en copy.S) usan la convención de llamadas `fastcall` (ver [fastcall](https://msdn.microsoft.com/en-us/library/6xa169sk.aspx)). Entonces recibe sus parámetros de entrada de los registros `ax`, `dx` y `cx`. Llamar a `memcpy` se ve así:
 
 ```c
 memcpy(&boot_params.hdr, &hdr, sizeof hdr);
@@ -382,22 +382,22 @@ GLOBAL(memset)
 ENDPROC(memset)
 ```
 
-As you can read above, it uses the `fastcall` calling conventions like the `memcpy` function, which means that the function gets parameters from `ax`, `dx` and `cx` registers.
+Como puedes ver, se usa la convención de llamadas `fastcall` al igual que `memcpy`, lo que significa que la función obtiene sus parámetros de los registros `ax`, `dx` y `cx`.
 
-Generally `memset` is like a memcpy implementation. It saves the value of the `di` register on the stack and puts the `ax` value into `di` which is the address of the `biosregs` structure. Next is the `movzbl` instruction, which copies the `dl` value to the low 2 bytes of the `eax` register. The remaining 2 high bytes  of `eax` will be filled with zeros.
+Generalmente `memset` es como una implementación de `memcpy`. Guarda los valores del registro `di` en la pila, y coloca el valor del registro `ax` en `di`, que es la dirección de la estructura `biosregs`. Le sigue la instrucción `movzbl`, que copia el valor de `dl` en los 2 bytes de orden inferior del registro `eax`. Los 2 bytes restantes de `eax` se llenan con ceros.
 
-The next instruction multiplies `eax` with `0x01010101`. It needs to because `memset` will copy 4 bytes at the same time. For example, we need to fill a structure with `0x7` with memset. `eax` will contain `0x00000007` value in this case. So if we multiply `eax` with `0x01010101`, we will get `0x07070707` and now we can copy these 4 bytes into the structure. `memset` uses `rep; stosl` instructions for copying `eax` into `es:di`.
+La siguiente instrucción multiplica `eax` con `0x01010101`. Esto debido a que `memset` copiará 4 bytes al mismo tiempo. Por ejemplo, si queremos llenar una estructura con `0x7` usando `memset`, entonces `eax` contendrá el valor `0x00000007`. Luego, si multiplicamos `eax` con `0x01010101`, obtenemos el valor `0x07070707` y ahora sí podemos copiar estos 4 bytes en la estructura. `memset` utiliza las instrucciones `rep; stosl` para copiar `eax` en `es:di`.
 
-The rest of the `memset` function does almost the same as `memcpy`.
+El resto de la función `memset` es casi igual que `memcpy`.
 
-After the `biosregs` structure is filled with `memset`, `bios_putchar` calls the [0x10](http://www.ctyme.com/intr/rb-0106.htm) interrupt which prints a character. Afterwards it checks if the serial port was initialized or not and writes a character there with [serial_putchar](https://github.com/torvalds/linux/blob/master/arch/x86/boot/tty.c#L30) and `inb/outb` instructions if it was set.
+Luego de que la estructura `biosregs` es llenada con `memset`, `bios_putchar` llama la interrución [0x10](http://www.ctyme.com/intr/rb-0106.htm), la cual imprime un carácter. Luego revisa si el puerto serial fue inicializado o no, y si fue así, escribe un carácter allí con las instrucciones  [serial_putchar](https://github.com/torvalds/linux/blob/master/arch/x86/boot/tty.c#L30) y `inb/outb`.
 
-Heap initialization
+Inicialización del heap
 --------------------------------------------------------------------------------
 
-After the stack and bss section were prepared in [header.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S) (see previous [part](linux-bootstrap-1.md)), the kernel needs to initialize the [heap](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c#L116) with the [`init_heap`](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c#L116) function.
+Luego de que las secciones de la pila y el [bss](https://en.wikipedia.org/wiki/.bss) se prepararon en [header.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S) (ver [parte previa](linux-bootstrap-1.md)), el kernel necesita inicializar el [heap](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c#L116) con la función [`init_heap`](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c#L116).
 
-First of all `init_heap` checks the [`CAN_USE_HEAP`](https://github.com/torvalds/linux/blob/master/arch/x86/include/uapi/asm/bootparam.h#L21) flag from the [`loadflags`](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L321) in the kernel setup header and calculates the end of the stack if this flag was set:
+Primero que todo, `init_heap` revisa que las banderas  [`CAN_USE_HEAP`](https://github.com/torvalds/linux/blob/master/arch/x86/include/uapi/asm/bootparam.h#L21) y [`loadflags`](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L321) en el archivo de encabezado de inicialización del kernel estén encendidas, y si es así, calcula el final de la pila:
 
 ```C
 	char *stack_end;
@@ -407,15 +407,19 @@ First of all `init_heap` checks the [`CAN_USE_HEAP`](https://github.com/torvalds
 		    : "=r" (stack_end) : "i" (-STACK_SIZE));
 ```
 
-or in other words `stack_end = esp - STACK_SIZE`.
+O, en otras palabras `stack_end = esp - STACK_SIZE`.
 
-Then there is the `heap_end` calculation:
+Luego está el cálculo de `heap_end`:
+
 ```c
 	heap_end = (char *)((size_t)boot_params.hdr.heap_end_ptr + 0x200);
+	if (heap_end > stack_end)
+			heap_end = stack_end;
 ```
-which means `heap_end_ptr` or `_end` + `512`(`0x200h`). The last check is whether `heap_end` is greater than `stack_end`. If it is then `stack_end` is assigned to `heap_end` to make them equal.
 
-Now the heap is initialized and we can use it using the `GET_HEAP` method. We will see how it is used, how to use it and how the it is implemented in the next posts.
+Lo que significa que `heap_end_ptr` OR `_end` + `512`(`0x200h`) [1]. El último *if* es para comprobar si `heap_end` es mayor que `stack_end`, en cuyo caso se hace `heap_end = stack_end` para que sean iguales.
+
+Ahora el heap está inicializado y podemos usarlo mediante el método `GET_HEAP`. En los siguientes artículos cómo es usado, cómo nosotros podemos usarlo, y cómo se implementa.
 
 CPU validation
 --------------------------------------------------------------------------------
@@ -627,3 +631,6 @@ Links
 * [TLDP documentation for Linux Boot Process](http://www.tldp.org/HOWTO/Linux-i386-Boot-Code-HOWTO/setup.html) (old)
 * [Previous Part](linux-bootstrap-1.md)
 
+Notas:
+--------------------------------------------------------------------------------
+[1] No estoy muy seguro a qué se refiere el autor original con esta frase. Posiblemente un error de redacción.
