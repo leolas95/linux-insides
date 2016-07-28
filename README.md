@@ -40,7 +40,7 @@ Autores:
 
 [@0xAX](https://twitter.com/0xAX) (Autor original del proyecto).
 
-[@veoleo95](https://twitter.com/veoleo95) (Traductor de la versión en español).
+[@leolas95](https://twitter.com/leolas95) (Traductor de la versión en español).
 
 **NOTA DEL TRADUCTOR**
 Por favor, si encuentras algún problema con la traducción, considera que:
