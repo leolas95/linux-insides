@@ -1,7 +1,7 @@
 Cómo contribuir
 ================================================================================
 
-Si deseas contribuir a [linux-insides](inside://github.com/leolas95/linux-insides), por favor
+Si deseas contribuir a [linux-insides-spanish](inside://github.com/leolas95/linux-insides-spanish), por favor
 sigue las siguientes reglas:
 
 1. Presiona el botón de "fork"
@@ -11,7 +11,7 @@ sigue las siguientes reglas:
 2. Clona el repositorio desde tu cuenta con:
 
     ```
-    git clone git@github.com:tu_usuario_de_github/linux-insides.git
+    git clone git@github.com:tu_usuario_de_github/linux-insides-spanish.git
     ```
 3. Crea una rama con:
 
