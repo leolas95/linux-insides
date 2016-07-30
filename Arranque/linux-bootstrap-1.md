@@ -687,9 +687,7 @@ del kernel, la implementación de algunas rutinas de memoria tales como `memset`
 `memcpy`, `earlyprintk`, inicialización temprana de la consola y mucho más.
 
 **Por favor, recuerda que el inglés no es mi idioma natal, lamento cualquier inconveniente.
-Si encuentras un error por favor envía un PR a [linux-internals](https://github.com/0xAX/linux-internals).**
-
-**Please note that English is not my first language and I am really sorry for any inconvenience. If you found any mistakes please send me PR to [linux-internals](https://github.com/0xAX/linux-internals).**
+Si encuentras un error por favor envía un PR a [linux-insides-spanish](https://github.com/leolas95/linux-insides-spanish).**
 
 Links
 --------------------------------------------------------------------------------
@@ -699,9 +697,9 @@ Links
   * [8086](http://en.wikipedia.org/wiki/Intel_8086)
   * [80386](http://en.wikipedia.org/wiki/Intel_80386)
   * [Reset vector](http://en.wikipedia.org/wiki/Reset_vector)
-  * [Real mode](http://en.wikipedia.org/wiki/Real_mode)
+  * [Modo real](https://es.wikipedia.org/wiki/Modo_real)
   * [Protocolo de arranque del kernel Linux](https://www.kernel.org/doc/Documentation/x86/boot.txt)
   * [Manual del desarrollador de CoreBoot](http://www.coreboot.org/Developer_Manual)
   * [Lista de interrupciones de Ralf Brown](http://www.ctyme.com/intr/int.htm)
-  * [Fuente de poder](http://en.wikipedia.org/wiki/Power_supply://es.wikipedia.org/wiki/Fuente_de_alimentaci%C3%B3n()
+  * [Fuente de poder](https://es.wikipedia.org/wiki/Fuente_de_alimentaci%C3%B3n)
   * [Señal correcta de energía](http://en.wikipedia.org/wiki/Power_good_signal)
