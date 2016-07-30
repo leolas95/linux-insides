@@ -1,4 +1,4 @@
-Timers in the Linux kernel. Part 1.
+Timers and time management in the Linux kernel. Part 1.
 ================================================================================
 
 Introduction
@@ -6,7 +6,7 @@ Introduction
 
 This is yet another post that opens new chapter in the [linux-insides](http://0xax.gitbooks.io/linux-insides/content/) book. The previous [part](https://0xax.gitbooks.io/linux-insides/content/SysCall/syscall-4.html) was a list part of the chapter that describes [system call](https://en.wikipedia.org/wiki/System_call) concept and now time is to start new chapter. As you can understand from the post's title, this chapter will be devoted to the `timers` and `time management` in the Linux kernel. The choice of topic for the current chapter is not accidental. Timers and generally time management are very important and widely used in the Linux kernel. The Linux kernel uses timers for various tasks, different timeouts for example in [TCP](https://en.wikipedia.org/wiki/Transmission_Control_Protocol) implementation, the kernel must know current time, scheduling asynchronous functions, next event interrupt scheduling and many many more.
 
-So, we will start to learn implementation of the different time management related stuff in this part. We will see different types of timers and how do different Linux kernel subsystems use them. As always we will start from the earliest part of the Linux kernel and will go through initialization process of the Linux kernel. We already did it in the special [chapter](https://0xax.gitbooks.io/linux-insides/content/Initialization/index.html) which describes initialization process of the Linux kernel, but as you may remember we missied some things there. And one of them is the initialization of timers.
+So, we will start to learn implementation of the different time management related stuff in this part. We will see different types of timers and how do different Linux kernel subsystems use them. As always we will start from the earliest part of the Linux kernel and will go through initialization process of the Linux kernel. We already did it in the special [chapter](https://0xax.gitbooks.io/linux-insides/content/Initialization/index.html) which describes initialization process of the Linux kernel, but as you may remember we missed some things there. And one of them is the initialization of timers.
 
 Let's start.
 
@@ -344,7 +344,7 @@ __clocksource_register(&refined_jiffies);
 return 0;
 ```
 
-The clock source management code provides the API for clock source registration and selection. As we can see, clock sources are registered by calling the  `__clocksource_register` function during kernel initialization or from a kernel module. During registration, the clock source management code will choose the best clock source available in the system using the `clocksource.rating` field which we already saw when we initialized `clocksource` structure for `jiffes`.
+The clock source management code provides the API for clock source registration and selection. As we can see, clock sources are registered by calling the  `__clocksource_register` function during kernel initialization or from a kernel module. During registration, the clock source management code will choose the best clock source available in the system using the `clocksource.rating` field which we already saw when we initialized `clocksource` structure for `jiffies`.
 
 Using the jiffies
 --------------------------------------------------------------------------------
@@ -354,7 +354,7 @@ We just saw initialization of two `jiffies` based clock sources in the previous 
 * standard `jiffies` based clock source;
 * refined  `jiffies` based clock source;
 
-Don't worry if you don't understand the calculations here. They look frightening at first. Soon, step by step we will learn these things. So, we just saw initialization of `jffies` based clock sources and also we know that the Linux kernel has the global variable `jiffies` that holds the number of ticks that have occured since the kernel started to work. Now, let's look how to use it. To use `jiffies` we just can use `jiffies` global variable by its name or with the call of the `get_jiffies_64` function. This function defined in the [kernel/time/jiffies.c](https://github.com/torvalds/linux/blob/master/kernel/time/jiffies.c) source code file and just returns full `64-bit` value of the `jiffies`:
+Don't worry if you don't understand the calculations here. They look frightening at first. Soon, step by step we will learn these things. So, we just saw initialization of `jffies` based clock sources and also we know that the Linux kernel has the global variable `jiffies` that holds the number of ticks that have occurred since the kernel started to work. Now, let's look how to use it. To use `jiffies` we just can use `jiffies` global variable by its name or with the call of the `get_jiffies_64` function. This function defined in the [kernel/time/jiffies.c](https://github.com/torvalds/linux/blob/master/kernel/time/jiffies.c) source code file and just returns full `64-bit` value of the `jiffies`:
 
 ```C
 u64 get_jiffies_64(void)
@@ -397,7 +397,7 @@ jiffies + 30*HZ
 /* Two minutes from now */
 jiffies + 120*HZ
 
-/* Ten milliseconds from now */
+/* One millisecond from now */
 jiffies + HZ / 1000
 ```
 
@@ -430,7 +430,7 @@ Links
 * [Jiffy](https://en.wikipedia.org/wiki/Jiffy_%28time%29)
 * [high precision event timer](https://en.wikipedia.org/wiki/High_Precision_Event_Timer)
 * [nanoseconds](https://en.wikipedia.org/wiki/Nanosecond)
-* [Intel 8253](Programmable interval timer)
+* [Intel 8253](https://en.wikipedia.org/wiki/Intel_8253)
 * [seqlocks](https://en.wikipedia.org/wiki/Seqlock)
 * [cloksource documentation](https://www.kernel.org/doc/Documentation/timers/timekeeping.txt)
 * [Previous chapter](https://0xax.gitbooks.io/linux-insides/content/SysCall/index.html)

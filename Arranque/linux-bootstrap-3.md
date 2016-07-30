@@ -127,7 +127,7 @@ Now we can move directly to video mode initialization. We stopped at the `RESET_
 
 If we look at the `store_mode_params` function, we can see that it starts with the call to the `store_cursor_position` function. As you can understand from the function name, it gets information about cursor and stores it.
 
-First of all `store_cursor_position` initializes two variables which have type `biosregs` with `AH = 0x3`, and calls `0x10` BIOS interruption. After the interruption is successfully executed, it returns row and column in the `DL` and `DH` registers. Row and column will be stored in the `orig_x` and `orig_y` fields from the the `boot_params.screen_info` structure.
+First of all `store_cursor_position` initializes two variables which have type `biosregs` with `AH = 0x3`, and calls `0x10` BIOS interruption. After the interruption is successfully executed, it returns row and column in the `DL` and `DH` registers. Row and column will be stored in the `orig_x` and `orig_y` fields from the `boot_params.screen_info` structure.
 
 After `store_cursor_position` is executed, the `store_video_mode` function will be called. It just gets the current video mode and stores it in `boot_params.screen_info.orig_video_mode`. 
 
@@ -213,7 +213,7 @@ struct card_info {
 };
 ```
 
-is in the `.videocards` segment. Let's look in the [arch/x86/boot/setup.ld](https://github.com/0xAX/linux/blob/master/arch/x86/boot/setup.ld) linker file, we can see there:
+is in the `.videocards` segment. Let's look in the [arch/x86/boot/setup.ld](https://github.com/0xAX/linux/blob/master/arch/x86/boot/setup.ld) linker script, where we can find:
 
 ```
 	.videocards	: {
@@ -304,7 +304,7 @@ static inline void io_delay(void)
 }
 ```
 
-Outputting any byte to the port `0x80` should delay exactly 1 microsecond. So we can write any value (value from `AL` register in our case) to the `0x80` port. After this delay `realmode_switch_hook` function has finished execution and we can move to the next function.
+To output any byte to the port `0x80` should delay exactly 1 microsecond. So we can write any value (value from `AL` register in our case) to the `0x80` port. After this delay `realmode_switch_hook` function has finished execution and we can move to the next function.
 
 The next function is `enable_a20`, which enables [A20 line](http://en.wikipedia.org/wiki/A20_line). This function is defined in [arch/x86/boot/a20.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/a20.c) and it tries to enable the A20 gate with different methods. The first is the `a20_test_short` function which checks if A20 is already enabled or not with the `a20_test` function:
 
@@ -567,7 +567,7 @@ That's all. We're in the protected mode and stop at it's entry point. We will se
 Conclusion
 --------------------------------------------------------------------------------
 
-This is the end of the third part about linux kernel insides. In next part we will see first steps in the protected mode and transition into the [long mode](http://en.wikipedia.org/wiki/Long_mode).
+This is the end of the third part about linux kernel insides. In next part, we will see first steps in the protected mode and transition into the [long mode](http://en.wikipedia.org/wiki/Long_mode).
 
 If you have any questions or suggestions write me a comment or ping me at [twitter](https://twitter.com/0xAX).
 
