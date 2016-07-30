@@ -1,7 +1,7 @@
 Cómo contribuir
 ================================================================================
 
-Si deseas contribuir a [linux-insides-spanish](inside://github.com/leolas95/linux-insides-spanish), por favor
+Si deseas contribuir a [linux-insides-spanish](https://github.com/leolas95/linux-insides-spanish), por favor
 sigue las siguientes reglas:
 
 1. Presiona el botón de "fork"
