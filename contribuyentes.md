@@ -80,3 +80,4 @@ Gracias a todos los contribuyentes:
 * [Jeremy Lacomis](https://github.com/jlacomis)
 * [Dubyah](https://github.com/Dubyah)
 * [Matthieu Tardy](https://github.com/c0riolis)
+* [stakewinner00](https://github.com/stakewinner00)
