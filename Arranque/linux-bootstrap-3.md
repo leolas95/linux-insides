@@ -45,17 +45,17 @@ el cual pedirá seleccionar un modo de vídeo. Veremos su implementación, pero 
 
 Tipos de datos del kernel.
 --------------------------------------------------------------------------------
+Anteriormente vimos definiciones de distintos tipos de datos, como `u16` etc. en el código de configuración del kernel. Veamos algunos tipos de datos provistos por el kernel: 
 
-Earlier we saw definitions of different data types like `u16` etc. in the kernel setup code. Let's look at a couple of data types provided by the kernel:
 
-
-| Type | char | short | int | long | u8 | u16 | u32 | u64 |
+| Tipo | char | short | int | long | u8 | u16 | u32 | u64 |
 |------|------|-------|-----|------|----|-----|-----|-----|
-| Size |  1   |   2   |  4  |   8  |  1 |  2  |  4  |  8  |
+|Tamaño|  1   |   2   |  4  |   8  |  1 |  2  |  4  |  8  |
 
-If you the read source code of the kernel, you'll see these very often and so it will be good to remember them.
+Si lees el código fuente del kernel, verás estos tipos de datos con bastante frecuencia, así que conviene recordarlos.
 
-Heap API
+
+API del heap
 --------------------------------------------------------------------------------
 
 After we get `vid_mode` from `boot_params.hdr` in the `set_video` function, we can see the call to the `RESET_HEAP` function. `RESET_HEAP` is a macro which is defined in [boot.h](https://github.com/torvalds/linux/blob/master/arch/x86/boot/boot.h#L199). It is defined as:
