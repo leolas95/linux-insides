@@ -1,49 +1,49 @@
-Kernel booting process. Part 3.
+Proceso de arranque del kernel. Parte 3
 ================================================================================
 
-Video mode initialization and transition to protected mode
+Inicialización del modo de vídeo y transición al modo protegido
 --------------------------------------------------------------------------------
 
-This is the third part of the `Kernel booting process` series. In the previous [part](linux-bootstrap-2.md#kernel-booting-process-part-2), we stopped right before the call of the `set_video` routine from [main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c#L181). In this part, we will see:
-- video mode initialization in the kernel setup code,
-- preparation before switching into protected mode,
-- transition to protected mode
+Esta es la tercera parte de la serie del `proceso de arranque del kernel`. In la [parte anterior](https://github.com/leolas95/linux-insides-spanish/blob/master/Arranque/linux-bootstrap-2.md), terminamos justo después de la llamada de la rutina `set_video` en [main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c#L181). En esta parte, veremos lo siguiente:
+- Inicialización del modo de vídeo en el código de configuración del kernel,
+- la preparación antes de cambiar al modo protegido, y
+- la transición del modo protegido.
 
-**NOTE** If you don't know anything about protected mode, you can find some information about it in the previous [part](linux-bootstrap-2.md#protected-mode). Also there are a couple of [links](linux-bootstrap-2.md#links) which can help you.
+**NOTA** Si no conoces acerca del modo protegido, podrás encontrar información en el [artículo anterior](https://github.com/leolas95/linux-insides-spanish/blob/master/Arranque/linux-bootstrap-2.md). También hay un par de [links](https://github.com/leolas95/linux-insides-spanish/blob/master/Arranque/linux-bootstrap-2.md#links) que te pueden ser útiles.
 
-As I wrote above, we will start from the `set_video` function which is defined in the [arch/x86/boot/video.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/video.c#L315) source code file. We can see that it starts by first getting the video mode from the `boot_params.hdr` structure:
+Como había dicho, empezaremos desde la función `set_video`, definida en el archivo [arch/x86/boot/video.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/video.c#L315). Podemos ver que comienza obteniendo el modo de vídeo de la estructura `boot_params.hdr`:
 
 ```C
 u16 mode = boot_params.hdr.vid_mode;
 ```
 
-which we filled in the `copy_boot_params` function (you can read about it in the previous post). `vid_mode` is an obligatory field which is filled by the bootloader. You can find information about it in the kernel boot protocol:
+la cual ya llenamos en la función `copy_boot_params`, en el artículo anterior. `vid_mode` es un campo obligatorio, que es llenado por el cargador de arranque. Puedes encontrar información acerca de él en el protocolo de arranque del kernel:
 
 ```
-Offset	Proto	Name		Meaning
+Offset	Proto	Nombre		Definición
 /Size
 01FA/2	ALL	    vid_mode	Video mode control
 ```
 
-As we can read from the linux kernel boot protocol:
+Como podremos leer del protocolo de arranque del kernel:
 
 ```
-vga=<mode>
-	<mode> here is either an integer (in C notation, either
-	decimal, octal, or hexadecimal) or one of the strings
-	"normal" (meaning 0xFFFF), "ext" (meaning 0xFFFE) or "ask"
-	(meaning 0xFFFD).  This value should be entered into the
-	vid_mode field, as it is used by the kernel before the command
-	line is parsed.
+vga=<modo>
+	aquí <modo> es o bien un entero (en la notación de C, bien sea
+	decimal, octal o hexadecimal) o una de las strings
+	"normal" (significando 0xFFFF), "ext" (significando 0xFFFE)
+	o "ask" (significando 0xFFFD). Este valor deberá ser introducido
+	en el campo vid_mode, ya que es usado por el kernel antes de
+	que la línea de comandos sea "parseada".
 ```
 
-So we can add `vga` option to the grub or another bootloader configuration file and it will pass this option to the kernel command line. This option can have different values as mentioned in the description. For example, it can be an integer number `0xFFFD` or `ask`. If you pass `ask` to `vga`, you will see a menu like this:
+Así que podemos agregarle la opción `vga` al archivo de configuración de grub (o de otro cargador de arranque), y este le pasará esta opción a la línea de comandos del kernel. Esta opción puede tener diferentes valores, mencionados en la descripción anterior. Por ejemplo, puede ser un número decimal, hexadecimal (por ej: `0xFFFD`), o un string (por ej: `ask`). Si le pasas `ask` a `vga`, verás un menu como este:
 
 ![video mode setup menu](http://oi59.tinypic.com/ejcz81.jpg)
 
-which will ask to select a video mode. We will look at its implementation, but before diving into the implementation we have to look at some other things.
+el cual pedirá seleccionar un modo de vídeo. Veremos su implementación, pero antes de ello tenemos que ver algunas otras cosas.
 
-Kernel data types
+Tipos de datos del kernel.
 --------------------------------------------------------------------------------
 
 Earlier we saw definitions of different data types like `u16` etc. in the kernel setup code. Let's look at a couple of data types provided by the kernel:
