@@ -46,7 +46,7 @@ Autores:
 Por favor, si encuentras algún problema con la traducción, considera que:
 
 1. La traducción suele ser subjetiva; cada persona la puede interpretar de
-manera distina. Pero se hace el mayor esfuerzo en que sea lo mejor posible.
+manera distinta. Pero se hace el mayor esfuerzo en que sea lo mejor posible.
 
 2. Si encuentras una frase o palabra que consideras que está mal traducida,
 se pierde el significado original, o crees que la puedes mejorar, no dudes
