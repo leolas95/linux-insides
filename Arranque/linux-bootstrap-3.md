@@ -58,34 +58,35 @@ Si lees el código fuente del kernel, verás estos tipos de datos con bastante f
 API del heap
 --------------------------------------------------------------------------------
 
-After we get `vid_mode` from `boot_params.hdr` in the `set_video` function, we can see the call to the `RESET_HEAP` function. `RESET_HEAP` is a macro which is defined in [boot.h](https://github.com/torvalds/linux/blob/master/arch/x86/boot/boot.h#L199). It is defined as:
+Luego de que obtenemos `vid_mode` de `boot_params.hdr` en la función `set_video`, podemos ver la llamada a la macro `RESET_HEAP`.
+`RESET_HEAP` es una macro definida en [boot.h](https://github.com/torvalds/linux/blob/master/arch/x86/boot/boot.h#L199). Se define así:
 
 ```C
 #define RESET_HEAP() ((void *)( HEAP = _end ))
 ```
 
-If you have read the second part, you will remember that we initialized the heap with the [`init_heap`](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c#L116) function. We have a couple of utility functions for heap which are defined in `boot.h`. They are:
+Si has leído la segunda parte, recordarás que inicializamos el heap con la función [`init_heap`](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c#L116). Tenemos un par de funciones de utilidades para el heap que están definidas en `boot.h`. Estas son:
 
 ```C
 #define RESET_HEAP()
 ```
 
-As we saw just above, it resets the heap by setting the `HEAP` variable equal to `_end`, where `_end` is just `extern char _end[];`
+Como vimos arriba, esta reinicia el heap estableciendo el valor de la variable `HEAP` igual a `_end`, donde `_end` es simplemente `extern char _end[];`.
 
-Next is the `GET_HEAP` macro:
+Luego viene la macro `GET_HEAP`:
 
 ```C
 #define GET_HEAP(type, n) \
 	((type *)__get_heap(sizeof(type),__alignof__(type),(n)))
 ```
 
-for heap allocation. It calls the internal function `__get_heap` with 3 parameters:
+para asignar espacio al heap. Esta llama a la función interna `__get_heap` con 3 parámetros:
 
-* size of a type in bytes, which need be allocated
-* `__alignof__(type)` shows how variables of this type are aligned
-* `n` tells how many items to allocate
+* tamaño en bytes de un tipo de datos, para asignar el espacio respectivo
+* `__alignof__(tipo)` indica cómo las variables de este tipo están alineadas
+* `n` indica cuántos items asignar
 
-Implementation of `__get_heap` is:
+La implementación de `__get_heap` es la siguiente:
 
 ```C
 static inline char *__get_heap(size_t s, size_t a, size_t n)
@@ -99,15 +100,15 @@ static inline char *__get_heap(size_t s, size_t a, size_t n)
 }
 ```
 
-and further we will see its usage, something like:
+y luego veremos su uso, algo parecido a:
 
 ```C
 saved.data = GET_HEAP(u16, saved.x * saved.y);
 ```
 
-Let's try to understand how `__get_heap` works. We can see here that `HEAP` (which is equal to `_end` after `RESET_HEAP()`) is the address of aligned memory according to the `a` parameter. After this we save the memory address from `HEAP` to the `tmp` variable, move `HEAP` to the end of the allocated block and return `tmp` which is the start address of allocated memory.
+Tratemos de entender cómo funciona `__get_heap`. Podemos ver que `HEAP` (que es igual a `_end` luego de `RESET_HEAP()`) es la dirección de la memoria alineada de acuerdo al parámetro `a`. Luego de esto guardamos la dirección de memoria de `HEAP` en la variable `tmp` (con la instrucción `tmp = HEAP`), movemos `HEAP` al final del bloque asignado (`HEAP += s*n`) y retornamos `tmp`, que es la dirección inicial de la memoria asignada.
 
-And the last function is:
+Y la última función es:
 
 ```C
 static inline bool heap_free(size_t n)
@@ -116,9 +117,9 @@ static inline bool heap_free(size_t n)
 }
 ```
 
-which subtracts value of the `HEAP` from the `heap_end` (we calculated it in the previous [part](linux-bootstrap-2.md)) and returns 1 if there is enough memory for `n`.
+que substrae el valor de `HEAP` a `heap_end` (que lo calculamos en la [parte anterior](https://github.com/leolas95/linux-insides-spanish/blob/master/Arranque/linux-bootstrap-2.md)) y retorna 1 si hay suficiente memoria para `n`.
 
-That's all. Now we have a simple API for heap and can setup video mode.
+Y eso es todo. Ya tenemos una API simple para el heap y configurar el modo de vídeo.
 
 Set up video mode
 --------------------------------------------------------------------------------
