@@ -121,29 +121,67 @@ que substrae el valor de `HEAP` a `heap_end` (que lo calculamos en la [parte ant
 
 Y eso es todo. Ya tenemos una API simple para el heap y configurar el modo de vídeo.
 
-Set up video mode
+
+Preparación del modo de vídeo
 --------------------------------------------------------------------------------
 
-Now we can move directly to video mode initialization. We stopped at the `RESET_HEAP()` call in the `set_video` function. Next is the call to  `store_mode_params` which stores video mode parameters in the `boot_params.screen_info` structure which is defined in [include/uapi/linux/screen_info.h](https://github.com/0xAX/linux/blob/master/include/uapi/linux/screen_info.h).
+Ya podemos ir directamente a la inicialización del modo de vídeo. Nos habíamos detenido en la llamada a `RESET_HEAP()`, dentro de la función `set_video`. Luego sigue la llamada a `store_mode_params`, que guarda los parámetros del modo de vídeo en la estructura `boot_params.screen_info`, definida en el archivo [include/uapi/linux/screen_info.h](https://github.com/0xAX/linux/blob/master/include/uapi/linux/screen_info.h).
 
-If we look at the `store_mode_params` function, we can see that it starts with the call to the `store_cursor_position` function. As you can understand from the function name, it gets information about cursor and stores it.
+Si observamos la función `store_mode_params`, podemos ver que comienza llamando a `store_cursor_position`. Como podremos deducir por su nombre, esta función se encarga de obtener información acerca del cursor y de guardarla.
 
-First of all `store_cursor_position` initializes two variables which have type `biosregs` with `AH = 0x3`, and calls `0x10` BIOS interruption. After the interruption is successfully executed, it returns row and column in the `DL` and `DH` registers. Row and column will be stored in the `orig_x` and `orig_y` fields from the `boot_params.screen_info` structure.
+Primeramente, `store_cursor_position` crea dos variables de tipo `biosregs` (estas son `ireg` y `oreg`), inicializa el campo `AH` de `ireg` con `0x03` (`ireg.ah = 0x03`) y llama a la interrupción `0x10` del BIOS. Una vez la interrupción se ejecuta con éxito, retorna la fila y columna del cursor en los campos `DH` y `DL` de `oreg`. Estas se guardan en los campos `orig_x` y `orig_y` de la estructura `boot_params.screen_info`. A continuación se muestra el código de la función. 
 
-After `store_cursor_position` is executed, the `store_video_mode` function will be called. It just gets the current video mode and stores it in `boot_params.screen_info.orig_video_mode`. 
+```C
+static void store_cursor_position(void)
+{
+	struct biosregs ireg, oreg;
 
-After this, it checks the current video mode and sets the `video_segment`. After the BIOS transfers control to the boot sector, the following addresses are for video memory:
+	initregs(&ireg);
+	ireg.ah = 0x03;
+	intcall(0x10, &ireg, &oreg);
+
+	boot_params.screen_info.orig_x = oreg.dl;
+	boot_params.screen_info.orig_y = oreg.dh;
+
+	if (oreg.ch & 0x20)
+		boot_params.screen_info.flags |= VIDEO_FLAGS_NOCURSOR;
+
+	if ((oreg.ch & 0x1f) > (oreg.cl & 0x1f))
+		boot_params.screen_info.flags |= VIDEO_FLAGS_NOCURSOR;
+}
+```
+
+Para ver el archivo completo, puedes revisar el enlace http://lxr.free-electrons.com/source/arch/x86/boot/video.c. Para ver más acerca de `biosregs`, puedes revisar [boot.h](http://lxr.free-electrons.com/source/arch/x86/boot/boot.h#L231).
+
+Luego de que `store_cursor_position` es ejecutada, se llama a la función `store_video_mode`. Esta simplemente obteiene el modo de vídeo y lo almacena en `boot_params.screen_info.orig_video_mode`.
+
+Luego de esto, se revisa el modo actual de vídeo, y se establece `video_segment` acorde a este, como se muestra:
+
+```C
+if (boot_params.screen_info.orig_video_mode == 0x07) {
+	/* MDA, HGC, or VGA in monochrome mode */
+	video_segment = 0xb000;
+} else {
+	/* CGA, EGA, VGA and so forth */
+	video_segment = 0xb800;
+}
+```
+
+Luego de que la BIOS transfiere el control al sector de arranque, las siguientes direcciones son para memoria de vídeo:
 
 ```
 0xB000:0x0000 	32 Kb 	Monochrome Text Video Memory
 0xB800:0x0000 	32 Kb 	Color Text Video Memory
 ```
 
-So we set the `video_segment` variable to `0xB000` if the current video mode is MDA, HGC, or VGA in monochrome mode and to `0xB800` if the current video mode is in color mode. After setting up the address of the video segment, font size needs to be stored in `boot_params.screen_info.orig_video_points` with:
+Por lo tanto, se establece la variable `video_segment` a `0xB000` si el modo de vídeo actual es MDA, HGC, o VGA en modo monocromático, o a `0xB800` si el modo de vídeo actual es a color.
+
+Luego de esto, se debe guardar el tamaño de fuente en `boot_params.screen_info.orig_video_points`:
+
 
 ```C
 set_fs(0);
-font_size = rdfs16(0x485);
+font_size = rdfs16(0x485); /* Font size, BIOS area */
 boot_params.screen_info.orig_video_points = font_size;
 ```
 
