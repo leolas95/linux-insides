@@ -346,7 +346,7 @@ Lo primero es una línea de ensambladr con la instrucción `cli`, que *limpia* (
 
 Una [interrupción](https://es.wikipedia.org/wiki/Interrupci%C3%B3n) es una señal a la CPU emitida por hardware o software, indicandole que ha ocurrido un evento que requiere atención inmediata. Luego de recibir la señal, la CPU suspende la instrucción actual, guarda su estado y transfiere el control al [manejador de interrupción](https://en.wikipedia.org/wiki/Interrupt_handler) apropiado. Cuando el manejador de interrupción ha terminado su trabajo, transfiere el control a la instrucción que había sido interrumpida. Las interrupciones no enmascarables (NMI) son interrupciones que siempre son procesadas, intependientemente de la permisología. **No pueden ser ignoradas**, y típicamente son usadas para indicar errores de hardware de los cuales no podemos recuperarnos. No entraremos en muchos detalles de las interrupciones por ahora, dejándolo para los siguientes artículos.
 
-Volvamos al código. POdemos observar que la segunda línea está escribiendo el byte `0x80` (bit desabilitado (!)) a la dirección `0x70` (registro de direcciones CMOS). Luego de eso, se llama a la función `io_delay`. Esta causa un pequeño o dilación:
+Volvamos al código. Podemos observar que la segunda línea está escribiendo el byte `0x80` (bit desabilitado (!)) a la dirección `0x70` (registro de direcciones CMOS). Luego de eso, se llama a la función `io_delay`. Esta causa un pequeño o dilación:
 
 ```C
 static inline void io_delay(void)
