@@ -334,9 +334,7 @@ La función `go_to_protected_mode` está definida en [arch/x86/boot/pm.c](https:
 
 Primero está la llamada a la función `realmode_switch_hook`. Esta invoca el [*hook*](https://es.wikipedia.org/wiki/Hooking) del cambio al modo real si está presente, y desabilita el [NMI](http://en.wikipedia.org/wiki/Non-maskable_interrupt). Los *hooks* se usan si el cargador de arranque se ejecuta en un entorno hostil. Puedes leer más acerca de los *hooks* en el [protocolo de arranque](https://www.kernel.org/doc/Documentation/x86/boot.txt) (ver el apartado **ADVANCED BOOT LOADER HOOKS**).
 
-First is the call to the `realmode_switch_hook` function in `go_to_protected_mode`. This function invokes the real mode switch hook if it is present and disables [NMI](http://en.wikipedia.org/wiki/Non-maskable_interrupt). Hooks are used if the bootloader runs in a hostile environment. You can read more about hooks in the [boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt) (see **ADVANCED BOOT LOADER HOOKS**).
-
-The `realmode_switch` hook presents a pointer to the 16-bit real mode far subroutine which disables non-maskable interrupts. After `realmode_switch` hook (it isn't present for me) is checked, disabling of Non-Maskable Interrupts(NMI) occurs:
+El *hook* `realmode_switch` presenta un apuntador a la subrutina lejana de 16 bits en modo real que desabilita las *interrupciones no enmascarables* (_**N**on **M**askable **I**nterrupt_, NMI por sus siglas en ingles). Luego de que el *hook* `realmode_switch` es revisado, ocurre la desabilitación de las interrupciones no enmascarables:
 
 ```assembly
 asm volatile("cli");
@@ -344,11 +342,11 @@ outb(0x80, 0x70);	/* Disable NMI */
 io_delay();
 ```
 
-At first there is an inline assembly instruction with a `cli` instruction which clears the interrupt flag (`IF`). After this, external interrupts are disabled. The next line disables NMI (non-maskable interrupt).
+Lo primero es una línea de ensambladr con la instrucción `cli`, que *limpia* (o resetea) la bandera de interrupciones (`IF`, _**I**nterrupt **Flag**_). Luego de esto, se desactivan las interrupciones externas. La siguiente línea desactiva las NMI.
 
-An interrupt is a signal to the CPU which is emitted by hardware or software. After getting the signal, the CPU suspends the current instruction sequence, saves its state and transfers control to the interrupt handler. After the interrupt handler has finished it's work, it transfers control to the interrupted instruction. Non-maskable interrupts (NMI) are interrupts which are always processed, independently of permission. It cannot be ignored and is typically used to signal for non-recoverable hardware errors. We will not dive into details of interrupts now, but will discuss it in the next posts.
+Una [interrupción](https://es.wikipedia.org/wiki/Interrupci%C3%B3n) es una señal a la CPU emitida por hardware o software, indicandole que ha ocurrido un evento que requiere atención inmediata. Luego de recibir la señal, la CPU suspende la instrucción actual, guarda su estado y transfiere el control al [manejador de interrupción](https://en.wikipedia.org/wiki/Interrupt_handler) apropiado. Cuando el manejador de interrupción ha terminado su trabajo, transfiere el control a la instrucción que había sido interrumpida. Las interrupciones no enmascarables (NMI) son interrupciones que siempre son procesadas, intependientemente de la permisología. **No pueden ser ignoradas**, y típicamente son usadas para indicar errores de hardware de los cuales no podemos recuperarnos. No entraremos en muchos detalles de las interrupciones por ahora, dejándolo para los siguientes artículos.
 
-Let's get back to the code. We can see that second line is writing `0x80` (disabled bit) byte to `0x70` (CMOS Address register). After that, a call to the `io_delay` function occurs. `io_delay` causes a small delay and looks like:
+Volvamos al código. POdemos observar que la segunda línea está escribiendo el byte `0x80` (bit desabilitado (!)) a la dirección `0x70` (registro de direcciones CMOS). Luego de eso, se llama a la función `io_delay`. Esta causa un pequeño o dilación:
 
 ```C
 static inline void io_delay(void)
@@ -358,9 +356,9 @@ static inline void io_delay(void)
 }
 ```
 
-To output any byte to the port `0x80` should delay exactly 1 microsecond. So we can write any value (value from `AL` register in our case) to the `0x80` port. After this delay `realmode_switch_hook` function has finished execution and we can move to the next function.
+Escribir cualquier byte en el puerto `0x80`, debería causar un retraso de 1 microsegundo. Así que podemos escribir cualquier valor (en este caso el valor del registro `AL`) en el puerto `0x80`. Luego de este retraso, la función `realmode_switch_hook` termina y podemos pasar a la siguiente función.
 
-The next function is `enable_a20`, which enables [A20 line](http://en.wikipedia.org/wiki/A20_line). This function is defined in [arch/x86/boot/a20.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/a20.c) and it tries to enable the A20 gate with different methods. The first is the `a20_test_short` function which checks if A20 is already enabled or not with the `a20_test` function:
+La siguiente función es `enable_a20`, que habilita la [línea A20](http://en.wikipedia.org/wiki/A20_line). Ésta función está definida en [arch/x86/boot/a20.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/a20.c); esta intenta habilitar la puerta A20 mediante diferentes métodos. El primero es la función `a20_test_short`, que revisa si A20 está habilitada o no usando la función `a20_test`:
 
 ```C
 static int a20_test(int loops)
@@ -386,11 +384,11 @@ static int a20_test(int loops)
 }
 ```
 
-First of all we put `0x0000` in the `FS` register and `0xffff` in the `GS` register. Next we read the value in address `A20_TEST_ADDR` (it is `0x200`) and put this value into the `saved` variable and `ctr`.
+Lo primero es colocar el valor `0x0000` en el registro `FS` y el valor `0xffff` en el registro `GS` (con `set_fs(0x0000)` y `set_gs(0xffff)`, respectivamente). Luego leemos el valor en la dirección `A20_TEST_ADDR` (`rdfs32(A20_TEST_ADDR)`), (que, por cierto, está definida más arriba en el archivo como `#define A20_TEST_ADDR	(4*0x80)`, por lo que tiene un valor de `0x200`, o 512 en decimal) y colocamos este valor en las variables `saved` y `ctr`.
 
-Next we write an updated `ctr` value into `fs:gs` with the `wrfs32` function, then delay for 1ms, and then read the value from the `GS` register by address `A20_TEST_ADDR+0x10`, if it's not zero we already have enabled the A20 line. If A20 is disabled, we try to enable it with a different method which you can find in the `a20.c`. For example with call of `0x15` BIOS interrupt with `AH=0x2041` etc.
+Luego escribimos un valor actualizado de `ctr` en `fs:gs` con la función `wrfs32`, luego esperamos por un microsegundo, y leemos el valor del registro `GS` mediante la dirección `A20_TEST_ADDR+0x10`; si este resultado es distinto de cero significa que ya hemos habilitado la línea A20. Si A20 continúa desabilitada, intentamos habilitarla usando otro método, que podrás encontrar en el mismo archivo `a20.c`. Por ejemplo, con una llamada a la interrupción `0x15` de la BIOS, con `AX=0x2041`; mediante el controlador del teclado (usando la función `empty_8042()`), etc.
 
-If the `enabled_a20` function finished with fail, print an error message and call function `die`. You can remember it from the first source code file where we started - [arch/x86/boot/header.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S):
+Si la función `enabled_a20` falla, se muestra un mensaje de error y se llama la función `die`. Podrás recordar que la vimos en el primer archivo de código fuente con el que empezamos - [arch/x86/boot/header.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S):
 
 ```assembly
 die:
@@ -399,23 +397,42 @@ die:
 	.size	die, .-die
 ```
 
-After the A20 gate is successfully enabled, the `reset_coprocessor` function is called:
+Cuando la puerta A20 es habilitada exitosamente, se llama a la función `reset_coprocessor`:
+
  ```C
 outb(0, 0xf0);
 outb(0, 0xf1);
 ```
-This function clears the Math Coprocessor by writing `0` to `0xf0` and then resets it by writing `0` to `0xf1`.
 
-After this, the `mask_all_interrupts` function is called:
+Esta función *limpia* el coprocesador matemático, escribiendo `0` en la dirección `0xf0`, y luego lo resetea escribiendo `0` en `0xf1`.
+
+Luego de esto, la función `mask_all_interrupts` es llamada:
+
 ```C
 outb(0xff, 0xa1);       /* Mask all interrupts on the secondary PIC */
 outb(0xfb, 0x21);       /* Mask all but cascade on the primary PIC */
 ```
-This masks all interrupts on the secondary PIC (Programmable Interrupt Controller) and primary PIC except for IRQ2 on the primary PIC.
 
-And after all of these preparations, we can see the actual transition into protected mode.
+Esto enmascara todas las interrupciones en los [PIC](https://es.wikipedia.org/wiki/Controlador_programable_de_interrupciones) (_**P**rogrammable **I**nterrupt **C**ontroller_, por sus siglas en inglés) primario y secundario, exceptuando IRQ2 en el primario.
 
-Set up Interrupt Descriptor Table
+Al final de todas estas preparaciones, podemos ver transición como tal al modo protegido.
+
+And after all of these preparations, we can see the actual transition into protected mode, mediante las llamadas a las funciones 
+`setup_idt`, `setup_gdt` y `protected_mode_jump`:
+
+```C
+static void setup_idt(void)
+{
+	...
+	/* Actual transition to protected mode... */
+	setup_idt();
+	setup_gdt();
+	protected_mode_jump(boot_params.hdr.code32_start,
+		    (u32)&boot_params + (ds() << 4));
+}
+```
+
+Preparar la Tabla de Descriptor de Interrupción
 --------------------------------------------------------------------------------
 
 Now we set up the Interrupt Descriptor table (IDT). `setup_idt`:
