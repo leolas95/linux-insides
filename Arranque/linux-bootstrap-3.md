@@ -170,8 +170,8 @@ if (boot_params.screen_info.orig_video_mode == 0x07) {
 Luego de que la BIOS transfiere el control al sector de arranque, las siguientes direcciones son para memoria de vídeo:
 
 ```
-0xB000:0x0000 	32 Kb 	Monochrome Text Video Memory
-0xB800:0x0000 	32 Kb 	Color Text Video Memory
+0xB000:0x0000 	32 Kb 	Memoria de vídeo de texto monocromático
+0xB800:0x0000 	32 Kb 	Memoria de vídeo de texto a color
 ```
 
 Por lo tanto, se establece la variable `video_segment` a `0xB000` si el modo de vídeo actual es MDA, HGC, o VGA en modo monocromático, o a `0xB800` si el modo de vídeo actual es a color.
@@ -185,16 +185,18 @@ font_size = rdfs16(0x485); /* Font size, BIOS area */
 boot_params.screen_info.orig_video_points = font_size;
 ```
 
-First of all we put 0 in the `FS` register with the `set_fs` function. We already saw functions like `set_fs` in the previous part. They are all defined in [boot.h](https://github.com/0xAX/linux/blob/master/arch/x86/boot/boot.h). Next we read the value which is located at address `0x485` (this memory location is used to get the font size) and save the font size in `boot_params.screen_info.orig_video_points`.
+Primero que todo, escribimos 0 en el registro `FS` con la función `set_fs`. Ya vimos funciones como `set_fs` en la parte anterior. Todas ellas esán definidas en [boot.h](https://github.com/0xAX/linux/blob/master/arch/x86/boot/boot.h). Luego obtenemos el tamaño de la fuente, que es el valor en la dirección `0x485`, y lo guardamos en `boot_params.screen_info.orig_video_points`.
 
 ```
  x = rdfs16(0x44a);
  y = (adapter == ADAPTER_CGA) ? 25 : rdfs8(0x484)+1;
 ```
 
-Next we get the amount of columns by address `0x44a` and rows by address `0x484` and store them in `boot_params.screen_info.orig_video_cols` and `boot_params.screen_info.orig_video_lines`. After this, execution of `store_mode_params` is finished.
+Luego, de la dirección `0x44a` obtenemos el número de columnas, y de `0x484` el número de filas, y las guardamos en `boot_params.screen_info.orig_video_cols` y `boot_params.screen_info.orig_video_lines`, respectivamente. Luego de esto,
+finaliza la ejecución de `store_mode_params`.
 
-Next we can see the `save_screen` function which just saves screen content to the heap. This function collects all data which we got in the previous functions like rows and columns amount etc. and stores it in the `saved_screen` structure, which is defined as:
+Luego vemos la función `save_screen`, que simplemente guarda el contenido de la pantalla en el heap. Esta función toma todos los datos que obtuvimos en funciones anteriores, como el número de filas y columnas, y los guarda en la estructura `saved_screen`,
+que está definida como:
 
 ```C
 static struct saved_screen {
@@ -204,24 +206,23 @@ static struct saved_screen {
 } saved;
 ```
 
-It then checks whether the heap has free space for it with:
+Luego, revisa que el heap tenga suficiente espacio libre para guardar `saved`:
 
 ```C
 if (!heap_free(saved.x*saved.y*sizeof(u16)+512))
 		return;
 ```
 
-and allocates space in the heap if it is enough and stores `saved_screen` in it.
+Y si es así, asigna espacio en el heap y guarda `saved` en el.
 
-The next call is `probe_cards(0)` from [arch/x86/boot/video-mode.c](https://github.com/0xAX/linux/blob/master/arch/x86/boot/video-mode.c#L33). It goes over all video_cards and collects the number of modes provided by the cards. Here is the interesting moment, we can see the loop:
+La siguiente llamada es `probe_cards(0)`, ubicada en [arch/x86/boot/video-mode.c](https://github.com/0xAX/linux/blob/master/arch/x86/boot/video-mode.c#L33). Esto recorre todas las video_cards (colección que representa las tarjetas de vídeo) y obtiene el número de modos que cada una provee; la función sondea los drivers (controladores) de vídeo, y los hace generar listas de los modos que cada una provee. Aquí hay algo interesante: tenemos este ciclo:
 
 ```C
 for (card = video_cards; card < video_cards_end; card++) {
-  /* collecting number of modes here */
+  /* Recolecta el número de modos */
 }
 ```
-
-but `video_cards` is not declared anywhere. Answer is simple: Every video mode presented in the x86 kernel setup code has definition like this:
+pero vemos que `video_cards` no está declarada en ninguna parte. La respuesta es simple: cada modo de vídeo presentado en el código de preparación del kernel para x86 tiene una definición de estructura como esta:
 
 ```C
 static __videocard video_vga = {
@@ -231,13 +232,13 @@ static __videocard video_vga = {
 };
 ```
 
-where `__videocard` is a macro:
+donde `__videocard` es una macro:
 
 ```C
 #define __videocard struct card_info __attribute__((used,section(".videocards")))
 ```
 
-which means that `card_info` structure:
+lo que significa que la estructura `card_info`:
 
 ```C
 struct card_info {
@@ -252,7 +253,7 @@ struct card_info {
 };
 ```
 
-is in the `.videocards` segment. Let's look in the [arch/x86/boot/setup.ld](https://github.com/0xAX/linux/blob/master/arch/x86/boot/setup.ld) linker script, where we can find:
+está en el segmento `.videocards`. Echemos un vistazo al guión del enlazador, [arch/x86/boot/setup.ld](https://github.com/0xAX/linux/blob/master/arch/x86/boot/setup.ld), donde podremos encontrar:
 
 ```
 	.videocards	: {
@@ -262,13 +263,25 @@ is in the `.videocards` segment. Let's look in the [arch/x86/boot/setup.ld](http
 	}
 ```
 
-It means that `video_cards` is just a memory address and all `card_info` structures are placed in this  segment. It means that all `card_info` structures are placed between `video_cards` and `video_cards_end`, so we can use it in a loop to go over all of it.  After `probe_cards` executes we have all structures like `static __videocard video_vga` with filled `nmodes` (number of video modes).
+Esto significa que `video_cards` es simplemente una dirección de memoria, y que todas las estructuras `card_info` están ubicadas en este segmento. Significa, también, que todas las estructuras `card_info` están ubicadas entre `video_cards` y `video_cards_end` (las direcciones *base* y *final* de un arreglo, si se quiere ver así), por lo que podrán ser recorridas en un ciclo usando estas dos direcciones. Luego de que `probe_cards` se ejecuta, tendremos estructuras como `static __videocard video_vga` con sus campos `nmodes` (el número de modos de vídeo soportados) llenos.
 
-After `probe_cards` execution is finished, we move to the main loop in the `set_video` function. There is an infinite loop which tries to set up video mode with the `set_mode` function or prints a menu if we passed `vid_mode=ask` to the kernel command line or video mode is undefined. 
+Luego de que termina la ejecución `probe_cards`, nos movemos al ciclo principal en la función `set_video`. Allí hay un ciclo infinito que intenta establecer un modo de vídeo, usando la función `set_mode`, o muestra un menú si le pasamos la opción `vid_mode=ask` al kernel mediante la línea de comandos o si el modo de vídeo no está definido.
 
-The `set_mode` function is defined in [video-mode.c](https://github.com/0xAX/linux/blob/master/arch/x86/boot/video-mode.c#L147) and gets only one parameter, `mode`, which is the number of video modes (we got it from the menu or in the start of `setup_video`, from the kernel setup header). 
+La función `set_mode` está definida en [video-mode.c](https://github.com/0xAX/linux/blob/master/arch/x86/boot/video-mode.c#L147) y solo recibe un parámetro, `mode`, que es el número de modos de vídeo (que obtuvimos del menú, o al inicio de `setup_video`).
 
-The `set_mode` function checks the `mode` and calls the `raw_set_mode` function. The `raw_set_mode` calls the `set_mode` function for the selected card i.e. `card->set_mode(struct mode_info*)`. We can get access to this function from the `card_info` structure. Every video mode defines this structure with values filled depending upon the video mode (for example for `vga` it is the `video_vga.set_mode` function. See above example of `card_info` structure for `vga`). `video_vga.set_mode` is `vga_set_mode`, which checks the vga mode and calls the respective function:
+La función `set_mode` revisa de qué tipo es `mode`:
+
+```C
+/* Very special mode numbers... */
+if (mode == VIDEO_CURRENT_MODE)
+	return 0;	/* Nothing to do... */
+else if (mode == NORMAL_VGA)
+	mode = VIDEO_80x25;
+else if (mode == EXTENDED_VGA)
+	mode = VIDEO_8POINT;
+```
+
+y llama a la función `raw_set_mode`. Esta a su vez llama a la función `set_mode` para la tarjeta seleccionada (`card->set_mode(&mix)` en el código, donde `mix` es un `struct mode_info *`). Podemos tener acceso a esta funciṕn mediante la estructura `card_info`. Cada modo de vídeo define esta estructura con valores acorde a sí mismo (por ejemplo, para `vga` la función set_mode es `vga_set_mode`. Puedes ver el ejemplo de arriba de la estructura `card_info` para el modo `vga`). `video_vga.set_mode` es `vga_set_mode`, que determina el modo de vga y llama a la función respectiva:
 
 ```C
 static int vga_set_mode(struct mode_info *mode)
@@ -304,20 +317,22 @@ static int vga_set_mode(struct mode_info *mode)
 }
 ```
 
-Every function which sets up video mode just calls the `0x10` BIOS interrupt with a certain value in the `AH` register.
+Cada función que establece un modo de vídeo simplemente llama a la interrupción `0x10` del BIOS con un cierto valor en el registro `AH`.
 
-After we have set video mode, we pass it to `boot_params.hdr.vid_mode`.
+Luego de que establecemos el modo de vídeo, se lo pasamos a `boot_params.hdr.vid_mode`.
 
-Next `vesa_store_edid` is called. This function simply stores the [EDID](https://en.wikipedia.org/wiki/Extended_Display_Identification_Data) (**E**xtended **D**isplay **I**dentification **D**ata) information for kernel use. After this `store_mode_params` is called again. Lastly, if `do_restore` is set, the screen is restored to an earlier state.
+Luego se llama a `vesa_store_edid`. Esta función simplemente almacena la información [EDID](https://en.wikipedia.org/wiki/Extended_Display_Identification_Data) (***E**xtended **D**isplay **I**dentification **D**ata*, estructura de datos provista por un monitor, que permite a un computador determinar las capacidades y características de este) para uso del kernel. Luego de esto, se llama otra vez a `store_mode_params`. Finalmente, si `do_restore` está encendido, la pantalla se restaura a un estado previo.
 
-After this we have set video mode and now we can switch to the protected mode.
+Despues de esto, hemos determinado y establecido el modo de vídeo, y ahora podemos pasar el modo protegido.
 
-Last preparation before transition into protected mode
+Última preparación antes de la transición al modo protegido
 --------------------------------------------------------------------------------
 
-We can see the last function call - `go_to_protected_mode` - in [main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c#L184). As the comment says: `Do the last things and invoke protected mode`, so let's see these last things and switch into protected mode.
+Podemos observar la última llamada a función - `go_to_protected_mode` - en in [main.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/main.c#L184). Tal cual como dice su comentario, esta función realiza las últimas preparaciones e invoca al modo protegido. Veamos de qué trata esto.
 
-`go_to_protected_mode` is defined in [arch/x86/boot/pm.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/pm.c#L104). It contains some functions which make the last preparations before we can jump into protected mode, so let's look at it and try to understand what they do and how it works.
+La función `go_to_protected_mode` está definida en [arch/x86/boot/pm.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/pm.c#L104). Esta contiene llamadas a otras funciones que realizan las últimas preparaciones antes de saltar al modo protegido, así que veámoslas y tratemos de entender qué hacen y cómo funcionan.
+
+Primero está la llamada a la función `realmode_switch_hook`. Esta invoca el [*hook*](https://es.wikipedia.org/wiki/Hooking) del cambio al modo real si está presente, y desabilita el [NMI](http://en.wikipedia.org/wiki/Non-maskable_interrupt). Los *hooks* se usan si el cargador de arranque se ejecuta en un entorno hostil. Puedes leer más acerca de los *hooks* en el [protocolo de arranque](https://www.kernel.org/doc/Documentation/x86/boot.txt) (ver el apartado **ADVANCED BOOT LOADER HOOKS**).
 
 First is the call to the `realmode_switch_hook` function in `go_to_protected_mode`. This function invokes the real mode switch hook if it is present and disables [NMI](http://en.wikipedia.org/wiki/Non-maskable_interrupt). Hooks are used if the bootloader runs in a hostile environment. You can read more about hooks in the [boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt) (see **ADVANCED BOOT LOADER HOOKS**).
 
