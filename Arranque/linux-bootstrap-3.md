@@ -432,10 +432,10 @@ static void setup_idt(void)
 }
 ```
 
-Preparar la Tabla de Descriptor de Interrupción
+Preparar la Tabla de Descriptores de Interrupción
 --------------------------------------------------------------------------------
 
-Now we set up the Interrupt Descriptor table (IDT). `setup_idt`:
+Ahora preparamos la [Tabla de Descriptores de Interrupció](https://en.wikipedia.org/wiki/Interrupt_descriptor_table) (_**I**nterrupt **D**escriptor **T**able_, IDT, por sus siglas en inglés), con la función `setup_idt`:
 
 ```C
 static void setup_idt(void)
@@ -444,8 +444,11 @@ static void setup_idt(void)
 	asm volatile("lidtl %0" : : "m" (null_idt));
 }
 ```
+que inicializa la Tabla de Descriptores de Interrupción (que describe los manejadores de interrupciones, etc). Por
+ahora la IDT no se _instala_ (veremos esto luego); simplemente la _cargamos_ con la instrucción `lidtl`. `null_idt`
+contiene la dirección y tamaño de la IDT, pero en este momento estos son cero. `null_idt` es una estructura de
+tipo `gdt_ptr`, definida como:
 
-which sets up the Interrupt Descriptor Table (describes interrupt handlers and etc.). For now the IDT is not installed (we will see it later), but now we just the load IDT with the `lidtl` instruction. `null_idt` contains address and size of IDT, but now they are just zero. `null_idt` is a `gdt_ptr` structure, it as defined as:
 ```C
 struct gdt_ptr {
 	u16 len;
@@ -453,12 +456,18 @@ struct gdt_ptr {
 } __attribute__((packed));
 ```
 
-where we can see the 16-bit length(`len`) of the IDT and the 32-bit pointer to it (More details about the IDT and interruptions will be seen in the next posts). ` __attribute__((packed))` means that the size of `gdt_ptr` is the minimum required size. So the size of the `gdt_ptr` will be 6 bytes here or 48 bits. (Next we will load the pointer to the `gdt_ptr` to the `GDTR` register and you might remember from the previous post that it is 48-bits in size).
+Donde podemos ver el campo de 16 bits que indica la longitud de la tabla (`len`) y el apuntador a ella, de 32 bits
+(en los siguientes artículos se verán más detalles acerca de la IDT y las interrupciones).
+` __attribute__((packed))` significa que el tamaño de `gdt_ptr` es el mínimo requerido para la tabla. Así, el tamaño
+`gdt_ptr` será de 6 bytes, o 48 bits (los 32 bits de ptr más los 16 de len). (Luego cargaremos el apuntador a
+`gdt_ptr` en el registro `GDTR`, que podrás recordar de artículos anteriores que tiene un tamaño de 48 bits).
 
-Set up Global Descriptor Table
+Preparar la Tabla de Descriptores Globales
 --------------------------------------------------------------------------------
 
-Next is the setup of the Global Descriptor Table (GDT). We can see the `setup_gdt` function which sets up GDT (you can read about it in the [Kernel booting process. Part 2.](linux-bootstrap-2.md#protected-mode)). There is a definition of the `boot_gdt` array in this function, which contains the definition of the three segments:
+Los siguiente es la inicialización de la [Tabla Global de Descriptores](https://en.wikipedia.org/wiki/Global_Descriptor_Table) (GDT. Ver también [GDT en OSdev](http://wiki.osdev.org/GDT_Tutorial)). Podemos ver la función `setup_gdt`, que inicializa la GDT (también puedes
+leer más de ella en [Proceso de arranque del Kernel. Parte 2](https://github.com/leolas95/linux-insides-spanish/blob/master/Arranque/linux-bootstrap-2.md#modo-protegido)). En esta función hay
+una definición del arreglo `boot_gdt`, que a su vez contiene la definición de tres segmentos:
 
 ```C
 	static const u64 boot_gdt[] __attribute__((aligned(16))) = {
@@ -468,7 +477,12 @@ Next is the setup of the Global Descriptor Table (GDT). We can see the `setup_gd
 	};
 ```
 
-For code, data and TSS (Task State Segment). We will not use the task state segment for now, it was added there to make Intel VT happy as we can see in the comment line (if you're interested you can find commit which describes it - [here](https://github.com/torvalds/linux/commit/88089519f302f1296b4739be45699f06f728ec31)). Let's look at `boot_gdt`. First of all note that it has the `__attribute__((aligned(16)))` attribute. It means that this structure will be aligned by 16 bytes. Let's look at a simple example:
+Esto es para los segmentos de código (CS), datos (DS) y de estado de la tarea (TSS, _Task State Segment_). Por
+ahora no usaremos el TSS; como podemos ver en el [comentario de la función](https://github.com/torvalds/linux/commit/88089519f302f1296b4739be45699f06f728ec31), solo fue agregado para
+_complacer_ a Intel VT (_**I**ntel **V**irtualization **T**echnology_, Tecnología de Virtualización de Intel).
+Revisemos el `boot_gdt`. Primero que todo, nótese que este tiene el atributo `__attribute__((aligned(16)))` . Esto
+significa que esta estructura será alineada a 16 bytes. Veamos un ejemplo sencillo:
+
 ```C
 #include <stdio.h>
 
@@ -492,7 +506,8 @@ int main(void)
 }
 ```
 
-Technically a structure which contains one `int` field must be 4 bytes, but here `aligned` structure will be 16 bytes:
+Técnicamente, una estructura que contiene un solo `int` debería ocupar 4 bytes (por supuesto, dependiendo de la
+arquitectura), pero aquí, `struct aligned a` ocupará 16 bytes, como se muestra:
 
 ```
 $ gcc test.c -o test && test
@@ -500,58 +515,72 @@ Not aligned - 4
 Aligned - 16
 ```
 
-`GDT_ENTRY_BOOT_CS` has index - 2 here, `GDT_ENTRY_BOOT_DS` is `GDT_ENTRY_BOOT_CS + 1` and etc. It starts from 2, because first is a mandatory null descriptor (index - 0) and the second is not used (index - 1).
+Continuando con el arreglo boot_gdt`. `GDT_ENTRY_BOOT_CS` está en la posición índice - 2, `GDT_ENTRY_BOOT_DS` en la
+posición `GDT_ENTRY_BOOT_CS + 1` + 1, etc. Se comienza desde 2 porque lo primero hay es un descriptor nulo obligatorio
+(índice - 0), y el segundo espacio es no usado (índice - 1).
 
-`GDT_ENTRY` is a macro which takes flags, base and limit and builds GDT entry. For example let's look at the code segment entry. `GDT_ENTRY` takes following values:
+`GDT_ENTRY` es una macro que recibe banderas, una base y un límite y construye una entrada o registro de la GDT. Por
+ejemplo, veamos la entrada para el segmento de código:
+
+```C
+[GDT_ENTRY_BOOT_CS] = GDT_ENTRY(0xc09b, 0, 0xfffff)
+```
+
+`GDT_ENTRY` recibe los siguientes valores como argumentos:
 
 * base  - 0
-* limit - 0xfffff
-* flags - 0xc09b
+* límite - 0xfffff
+* bandera - 0xc09b
 
-What does this mean? The segment's base address is 0, and the limit (size of segment) is - `0xffff` (1 MB). Let's look at the flags. It is `0xc09b` and it will be:
+¿Qué significa esto? La dirección base del segmento es 0, y el límite (que también se puede ver como el tamaño del
+segmento) is `0xfffff` (1 MB). Veamos el valor de la bandera. Este es `0xc09b`, que en binario sería:
+
 
 ```
 1100 0000 1001 1011
 ```
 
-in binary. Let's try to understand what every bit means. We will go through all bits from left to right:
+Tratemos de entender qué significa cada bit. Iremos de izquierda a derecha:
 
-* 1    - (G) granularity bit
-* 1    - (D) if 0 16-bit segment; 1 = 32-bit segment
-* 0    - (L) executed in 64 bit mode if 1
-* 0    - (AVL) available for use by system software
-* 0000 - 4 bit length 19:16 bits in the descriptor
-* 1    - (P) segment presence in memory
-* 00   - (DPL) - privilege level, 0 is the highest privilege
-* 1    - (S) code or data segment, not a system segment
-* 101  - segment type execute/read/
-* 1    - accessed bit
 
-You can read more about every bit in the previous [post](linux-bootstrap-2.md) or in the [Intel® 64 and IA-32 Architectures Software Developer's Manuals 3A](http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html).
+* 1    - (G) Bit de granularidad (Ver [esto](https://pdos.csail.mit.edu/6.828/2007/readings/i386/s05_01.htm) y [esto](http://ece-research.unm.edu/jimp/310/slides/micro_arch2.html))
+* 1    - (D) si es 0 -> segmento de 16 bits; si es 1 -> segmento de 32 bits
+* 0    - (L) si es 1, ejecución en modo de 64 bits
+* 0    - (AVL) (available) disponible para uso del _usuario_ (sistema operativo)
+* 0000 - longitud de 4 bits, del bit 16 al 19 en el descriptor
+* 1    - (P) presencia de segmento en memoria ([ver más](https://pdos.csail.mit.edu/6.828/2007/readings/i386/s05_01.htm))
+* 00   - (DPL) - nivel de privilegio; 0 es el más privilegiado
+* 1    - (S) segmento de código o datos, no es un segmento del sistema
+* 101  - tipo de lectura/ejecución del segmento
+* 1    - bit de accesado
 
-After this we get the length of the GDT with:
+Puedes leer más acerca de cada bit en el [artículo previo](https://github.com/leolas95/linux-insides-spanish/blob/master/Arranque/linux-bootstrap-2.md) o en los [Manuales para el Desarrollador de Software para
+arquitecturas Intel® 64 y IA-32](http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html).
+
+Luego de esto obtenemos la longitud de la GDT con:
 
 ```C
 gdt.len = sizeof(boot_gdt)-1;
 ```
 
-We get the size of `boot_gdt` and subtract 1 (the last valid address in the GDT).
+que obtiene el tamaño de `boot_gdt` y le resta 1 (para obtener la última **dirección válida** en la GDT).
 
-Next we get a pointer to the GDT with:
+Luego obtenemos un apuntador a la GDT con:
 
 ```C
 gdt.ptr = (u32)&boot_gdt + (ds() << 4);
 ```
 
-Here we just get the address of `boot_gdt` and add it to the address of the data segment left-shifted by 4 bits (remember we're in the real mode now).
+Aquí simplemente obtenemos la dirección de `boot_gdt` y le sumamos la dirección del segmento de datos (ds) desplazada
+4 bits a la izquierda (recuerda que estamos en modo real).
 
-Lastly we execute the `lgdtl` instruction to load the GDT into the GDTR register:
+Finalmente, ejecutamos la instrucción `lgdtl` para cargar la GDT en el registro GDTR:
 
 ```C
 asm volatile("lgdtl %0" : : "m" (gdt));
 ```
 
-Actual transition into protected mode
+Verdadera transición al modo protegido
 --------------------------------------------------------------------------------
 
 This is the end of the `go_to_protected_mode` function. We loaded IDT, GDT, disable interruptions and now can switch the CPU into protected mode. The last step is calling the `protected_mode_jump` function with two parameters:
