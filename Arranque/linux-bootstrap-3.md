@@ -515,8 +515,8 @@ Not aligned - 4
 Aligned - 16
 ```
 
-Continuando con el arreglo boot_gdt`. `GDT_ENTRY_BOOT_CS` está en la posición índice - 2, `GDT_ENTRY_BOOT_DS` en la
-posición `GDT_ENTRY_BOOT_CS + 1` + 1, etc. Se comienza desde 2 porque lo primero hay es un descriptor nulo obligatorio
+Continuando con el arreglo `boot_gdt`. `GDT_ENTRY_BOOT_CS` está en la posición índice - 2, `GDT_ENTRY_BOOT_DS` en la
+posición `GDT_ENTRY_BOOT_CS + 1`, etc. Se comienza desde 2 porque lo primero hay es un descriptor nulo obligatorio
 (índice - 0), y el segundo espacio es no usado (índice - 1).
 
 `GDT_ENTRY` es una macro que recibe banderas, una base y un límite y construye una entrada o registro de la GDT. Por
