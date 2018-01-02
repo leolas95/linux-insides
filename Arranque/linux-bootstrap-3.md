@@ -601,7 +601,7 @@ estará en el registro `eax` y el segundo en `edx`.
 
 Primero que todo colocamos la dirección de `boot_params` en el registro `esi` y la dirección del registro de segmento de código, `cs`, (0x1000) en el registro `bx`. Luego desplazamos `bx` 4 bits hacia la izquierda (recuerda que hacer un desplazamiento de _n_ bits
 hacia la izquierda equivale a multiplicar por 2^_n_) y sumamos la dirección de la etiqueta [`2`](https://github.com/torvalds/linux/blob/master/arch/x86/boot/pmjump.S#L45) a esto (el resultado de esto es que tendremos la dirección física de la etiqueta `2` en `bx`) y saltamos a la etiqueta `1`. Seguidamente colocamos el segmento de datos y el [segmento de estado
-de tareas1](https://en.wikipedia.org/wiki/Task_state_segment) en los registros `cx` y `di`:
+de tareas](https://en.wikipedia.org/wiki/Task_state_segment) en los registros `cx` y `di`:
 
 ```assembly
 movw	$__BOOT_DS, %cx
@@ -678,7 +678,7 @@ jmpl	*%eax
 
 Recuerda que `eax` contiene la dirección del punto de entrada al modo de 32 bits (se lo pasamos como primer argumento a `protected_mode_jump`).
 
-Y eso es todo. Estamos en modo protegido, parados en su punto de entrada. Veremos que ocurre luego en la siguiente parte.
+Y eso es todo. Estamos en modo protegido, parados en su punto de entrada. Veremos qué ocurre luego en la siguiente parte.
 
 Conclusión
 --------------------------------------------------------------------------------
