@@ -1,26 +1,27 @@
-Kernel booting process. Part 4.
+Proceso de arranque del kernel. Parte 4.
 ================================================================================
 
-Transition to 64-bit mode
+Transición al modo de 64 bits
 --------------------------------------------------------------------------------
 
-This is the fourth part of the `Kernel booting process` where we will see first steps in [protected mode](http://en.wikipedia.org/wiki/Protected_mode), like checking that cpu supports [long mode](http://en.wikipedia.org/wiki/Long_mode) and [SSE](http://en.wikipedia.org/wiki/Streaming_SIMD_Extensions), [paging](http://en.wikipedia.org/wiki/Paging), initializes the page tables and at the end we will discuss the transition to [long mode](https://en.wikipedia.org/wiki/Long_mode).
+Esta es la cuarta parte de la serie `Proceso de arranque del kernel`, en donde veremos los primeros pasos en el [modo protegido](https://es.wikipedia.org/wiki/Modo_protegido), como verificar que el cpu soporte el [modo largo](https://es.wikipedia.org/wiki/Modo_largo) y las extensiones [SSE](http://en.wikipedia.org/wiki/Streaming_SIMD_Extensions), [paginación de memoria](https://es.wikipedia.org/wiki/Paginaci%C3%B3n_de_memoria) y que inicialice la tabla de páginas. Al final hablaremos acerca de la tansición al modo largo.
 
-**NOTE: there will be much assembly code in this part, so if you are not familiar with that, you might want to consult a book about it**
+**NOTA: en esta sección habrá bastante código ensamblador, así que si no estás muy familiarizado con este, te recomiendo que primero leas un poco acerca de él *
 
-In the previous [part](https://github.com/0xAX/linux-insides/blob/master/Booting/linux-bootstrap-3.md) we stopped at the jump to the 32-bit entry point in [arch/x86/boot/pmjump.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/pmjump.S):
+En la [parte previa](https://github.com/leolas95/linux-insides-spanish/blob/master/Arranque/linux-bootstrap-3.md) nos detuvimos en el salto al punto de entrada de 32 bits, en el archivo [arch/x86/boot/pmjump.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/pmjump.S):
 
 ```assembly
 jmpl	*%eax
 ```
 
-You will recall that `eax` register contains the address of the 32-bit entry point. We can read about this in the [linux kernel x86 boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt):
+Seguro recordarás que el registro `eax` contiene la dirección del punto de entrada de 32 bits. Podemos leer un poco más acerca de él en [el protocolo de arranque del kernel linux]([linux kernel x86 boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt):
 
 ```
 When using bzImage, the protected-mode kernel was relocated to 0x100000
 ```
 
-Let's make sure that it is true by looking at the register values at the 32-bit entry point:
+Aseguremonos de que esto sea cierto echando un vistazo al valor de los registros en el punto de entrada de 32 bits:
+
 
 ```
 eax            0x100000	1048576
@@ -41,12 +42,15 @@ fs             0x18	24
 gs             0x18	24
 ```
 
+Podemos ver que el registro `cs` contiene el valor `0x10` (como recordarás de la [parte anterior](https://github.com/leolas95/linux-insides-spanish/blob/master/Arranque/linux-bootstrap-3.md), este es el segundo índice en la GDT (Tabla Global de Descriptores)), el registro `eip` contiene el valor `0x100000`, y la dirección base de todos los segmentos (incluido el segmento de código) es cero. Entonces, podemos obtener la dirección física, que será `0:0x100000`, o simplemente `0x100000`, según lo especificado por el protocolo de arranque mencionado anteriormente. Ahora sí empecemos con el punto de entrada de 32 bits.
+
 We can see here that `cs` register contains - `0x10` (as you will remember from the previous part, this is the second index in the Global Descriptor Table), `eip` register is `0x100000` and base address of all segments including the code segment are zero. So we can get the physical address, it will be `0:0x100000` or just `0x100000`, as specified by the boot protocol. Now let's start with the 32-bit entry point.
 
-32-bit entry point
+Punto de entrada de 32 bits
 --------------------------------------------------------------------------------
 
-We can find the definition of the 32-bit entry point in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S) assembly source code file:
+Podemos encontrar la definición del punto de entrada de 32 bits en el archivo [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S):
+
 
 ```assembly
 	__HEAD
@@ -58,14 +62,16 @@ ENTRY(startup_32)
 ENDPROC(startup_32)
 ```
 
-First of all why `compressed` directory? Actually `bzimage` is a gzipped `vmlinux + header + kernel setup code`. We saw the kernel setup code in all of the previous parts. So, the main goal of the `head_64.S` is to prepare for entering long mode, enter into it and then decompress the kernel. We will see all of the steps up to kernel decompression in this part.
+Antes que nada, ¿por qué el directorio donde está el archivo se llama `compressed`? Resulta que `bzimage` es en realidad una versión comprimida usando la herramienta gzip de `vmlinux + header + código de preparación del kernel`. Ya vimos el código de preparación del kernel en las partes anteriores.
 
-There were two files in the `arch/x86/boot/compressed` directory:
+El objetivo principal de `head_64.S` es preparar todo para entrar en el modo largo, entrar en él y luego descomprimir el kernel. En esta parte veremos todos los pasos, hasta la descompresión del kernel, que veremos en la siguiente entrada.
+
+En el directorio `arch/x86/boot/compressed` podrás ver dos archivos:
 
 * [head_32.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_32.S)
 * [head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S)
 
-but we will see only `head_64.S` because, as you may remember, this book is only `x86_64` related; `head_32.S` is not used in our case. Let's look at [arch/x86/boot/compressed/Makefile](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/Makefile). There we can see the following target:
+como este libro trata solo de la arquitectura `x86_64`, trabajaremos solamente con `head_64.S`. Echemos un vistazo a [arch/x86/boot/compressed/Makefile](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/Makefile). Allí podremos observar el siguiente _target_:
 
 ```Makefile
 vmlinux-objs-y := $(obj)/vmlinux.lds $(obj)/head_$(BITS).o $(obj)/misc.o \
@@ -73,7 +79,7 @@ vmlinux-objs-y := $(obj)/vmlinux.lds $(obj)/head_$(BITS).o $(obj)/misc.o \
 	$(obj)/piggy.o $(obj)/cpuflags.o
 ```
 
-Note `$(obj)/head_$(BITS).o`. This means that we will select which file to link based on what `$(BITS)` is set to, either head_32.o or head_64.o.   `$(BITS)` is defined elsewhere in [arch/x86/Makefile](https://github.com/torvalds/linux/blob/master/arch/x86/Makefile) based on the .config file:
+Fíjate en `$(obj)/head_$(BITS).o`. Esto significa que seleccionaremos qué archivo enlazar basados en el valor de la variable `BITS` (que será 32 o 64). Esta variable está definida en el archivo [arch/x86/Makefile](https://github.com/torvalds/linux/blob/master/arch/x86/Makefile) basada en la configuración del kernel:
 
 ```Makefile
 ifeq ($(CONFIG_X86_32),y)
@@ -87,9 +93,11 @@ else
 endif
 ```
 
-Now we know where to start, so let's do it.
+El efecto es qué dependiendo de la variable `BITS`, que puede ser 32 o 64, enlazaremos el archivo `head_32.o` o `head_64.o`, respectivamente.
 
-Reload the segments if needed
+Ahora que sabemos por dónde empezar, vamos a ello.
+
+Si hace falta, volver a cargar los segmentos
 --------------------------------------------------------------------------------
 
 As indicated above, we start in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S) assembly source code file. First we see the definition of the special section attribute before the `startup_32` definition:
