@@ -100,7 +100,7 @@ Ahora que sabemos por dónde empezar, vamos a ello.
 Si hace falta, volver a cargar los segmentos
 --------------------------------------------------------------------------------
 
-As indicated above, we start in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S) assembly source code file. First we see the definition of the special section attribute before the `startup_32` definition:
+Como se mencionó arriba, comenzaremos examinando el archivo [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S). Lo primero que vemos es la definición de la sección especial, justo antes de la definición de `startup_32`:
 
 ```assembly
     __HEAD
@@ -108,13 +108,13 @@ As indicated above, we start in the [arch/x86/boot/compressed/head_64.S](https:/
 ENTRY(startup_32)
 ```
 
-The `__HEAD` is macro which is defined in [include/linux/init.h](https://github.com/torvalds/linux/blob/master/include/linux/init.h) header file and expands to the definition of the following section:
+La macro `__HEAD` está definida en el archivo de cabecera [include/linux/init.h](https://github.com/torvalds/linux/blob/master/include/linux/init.h), y se expande en lo siguiente:
 
 ```C
 #define __HEAD		.section	".head.text","ax"
 ```
 
-with `.head.text` name and `ax` flags. In our case, these flags show us that this section is [executable](https://en.wikipedia.org/wiki/Executable) or in other words contains code. We can find definition of this section in the [arch/x86/boot/compressed/vmlinux.lds.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/vmlinux.lds.S) linker script:
+siendo `.head.text` el nombre y `ax` banderas. En nuestro caso, estas banderas nos indican que está sección (texto) es [ejecutable](https://es.wikipedia.org/wiki/Ejecutable), es decir, que contiene código. Podemos ver la definición de esta sección en el guión del enlazador [arch/x86/boot/compressed/vmlinux.lds.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/vmlinux.lds.S):
 
 ```
 SECTIONS
@@ -125,19 +125,20 @@ SECTIONS
 		HEAD_TEXT
 		_ehead = . ;
 	}
+	...
 ```
 
-If you are not familiar with syntax of `GNU LD` linker scripting language, you can find more information in the [documentation](https://sourceware.org/binutils/docs/ld/Scripts.html#Scripts). In short, the `.` symbol is a special variable of linker - location counter. The value assigned to it is an offset relative to the offset of the segment. In our case we assign zero to location counter. This means that that our code is linked to run from the `0` offset in memory. Moreover, we can find this information in comments:
+Si no estás familiarizado con la sintaxis del enlazador `GNU LD`, puedes leer acerca de él en su [documentación](https://sourceware.org/binutils/docs/ld/Scripts.html#Scripts). En resumidas cuentas, el símbolo `.` es una variable especial del enlazador (contador de localización). El valor que se le asigne es un desplazamiento relativo al desplazamiento del segmento. En nuestro caso le asignamos cero al contador de localización. Esto significa que nuestro código es enlazado para comenzar a ejecutarse desde el desplazamiento `0` en la memoria. Por otra parte, también podemos encontrar el siguiente comentario.
 
 ```
 Be careful parts of head_64.S assume startup_32 is at address 0.
 ```
 
-Ok, now we know where we are, and now is the best time to look inside the `startup_32` function.
+Ok, ahora ya sabemos donde estamos parados, y es un buen momento para mirar dentro de la función `startup_32`.
 
-In the beginning of the `startup_32` function, we can see the `cld` instruction which clears the `DF` bit in the [flags](https://en.wikipedia.org/wiki/FLAGS_register) register. When direction flag is clear, all string operations like [stos](http://x86.renejeschke.de/html/file_module_x86_id_306.html), [scas](http://x86.renejeschke.de/html/file_module_x86_id_287.html) and others will increment the index registers `esi` or `edi`. We need to clear direction flag because later we will use strings operations for clearing space for page tables, etc.
+En el inicio de la función `startup_32`, podemos ver la instrucción `cld`, que limpia el bit `DF` (**D**irection **F**lag, Bandera de dirección)(https://en.wikipedia.org/wiki/Direction_flag) en el registro [FLAGS](https://es.wikipedia.org/wiki/Registro_FLAGS). Cuando la bandera de dirección está en cero, todas las operaciones sobre strings, tales como [stos](http://x86.renejeschke.de/html/file_module_x86_id_306.html) y [scas](http://x86.renejeschke.de/html/file_module_x86_id_287.html) incrementarán los registros `esi` o `edi`. Establecemos la bandera de dirección a cero porque más adelante usaremos estas operaciones sobre strings para limpiar espacio para la tabla de páginas, entre otras cosas.
 
-After we have cleared the `DF` bit, next step is the check of the `KEEP_SEGMENTS` flag from `loadflags` kernel setup header field. If you remember we already saw `loadflags` in the very first [part](https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html) of this book. There we checked `CAN_USE_HEAP` flag to get ability to use heap. Now we need to check the `KEEP_SEGMENTS` flag. This flags is described in the linux [boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt) documentation:
+Luego de que hemos limpiado el bit `DF`, el siguiente paso revisar la bandera `KEEP_SEGMENTS`, del archivo de configuración del kernel `loadflags`. Si recuerdas, ya vimos el archivo `loadflags` en la [primera parte](https://github.com/leolas95/linux-insides-spanish/blob/master/Arranque/linux-bootstrap-1.md) del libro. Allí, revisamos la bandera `CAN_USE_HEAP` para tener la habilidad de poder usar el montón. Ahora, tenemos que revisar la bandera `KEEP_SEGMENTS`. Esta bandera está descrita en la documentación del [protocolo de arranque](https://www.kernel.org/doc/Documentation/x86/boot.txt) de linux:
 
 ```
 Bit 6 (write): KEEP_SEGMENTS
@@ -148,7 +149,7 @@ Bit 6 (write): KEEP_SEGMENTS
 	a base of 0 (or the equivalent for their environment).
 ```
 
-So, if the `KEEP_SEGMENTS` bit is not set in the `loadflags`, we need to reset `ds`, `ss` and `es` segment registers to a flat segment with base `0`. That we do:
+Por lo tanto, si el bit `KEEP_SEGMENTS` no está encendido, tenemos que resetear los registros de segmentos `ds`, `ss` y `es` al índice del segmento de datos, con base `0`. Para eso hacemos:
 
 ```C
 	testb $(1 << 6), BP_loadflags(%esi)
@@ -161,9 +162,9 @@ So, if the `KEEP_SEGMENTS` bit is not set in the `loadflags`, we need to reset `
 	movl	%eax, %ss
 ```
 
-Remember that the `__BOOT_DS` is `0x18` (index of data segment in the [Global Descriptor Table](https://en.wikipedia.org/wiki/Global_Descriptor_Table)). If `KEEP_SEGMENTS` is set, we jump to the nearest `1f` label or update segment registers with `__BOOT_DS` if it is not set. It is pretty easy, but here is one interesting moment. If you've read the previous [part](https://github.com/0xAX/linux-insides/blob/master/Booting/linux-bootstrap-3.md), you may remember that we already updated these segment registers right after we switched to [protected mode](https://en.wikipedia.org/wiki/Protected_mode) in [arch/x86/boot/pmjump.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/pmjump.S). So why do we need to care about values of segment registers again? The answer is easy. The Linux kernel also has a 32-bit boot protocol and if a bootloader uses it to load the Linux kernel all code before the `startup_32` will be missed. In this case, the `startup_32` will be first entry point of the Linux kernel right after bootloader and there are no guarantees that segment registers will be in known state.
+Recuerda que el valor de `__BOOT_DS` es `0x18` (índice del segmento de datos en la [Tabla Global de Descriptores](https://en.wikipedia.org/wiki/Global_Descriptor_Table)). Si el bit `KEEP_SEGMENTS` está encendido, entonces saltamos a la etiqueta `1f` más cercana. Sino, actualizamos los registros de segmento con el valor de  `__BOOT_DS`. Es bastante simple, pero hay detalle interesante: si has leído la [artículo anterior](https://github.com/leolas95/linux-insides-spanish/blob/master/Arranque/linux-bootstrap-3.md), recordarás que ya habíamos actualizado el valor de estos registros de segmento justo después de haber saltado al [modo protegido](https://es.wikipedia.org/wiki/Modo_protegido) en [arch/x86/boot/pmjump.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/pmjump.S). Así que, ¿por qué debemos preocuparnos otra vez por los valores de los registros de segmento?. Bueno, la respuesta es simple. El kernel Linux también tiene un protocolo de arranque de 32 bits, y si el cargador de arranque lo usa para cargar el kernel, todo el código antes de `startup_32` será saltado (ignorado). En este caso, `startup_32` será el primer punto de entrada al kernel justo después del cargador de arranque, y no hay ninguna garantía de que los registros de segmento estén en un estado conocido.
 
-After we have checked the `KEEP_SEGMENTS` flag and put the correct value to the segment registers, the next step is to calculate difference between where we loaded and compiled to run. Remember that `setup.ld.S` contains following definition: `. = 0` at the start of the `.head.text` section. This means that the code in this section is compiled to run from `0` address. We can see this in `objdump` output:
+Luego de que hemos revisado la bandera `KEEP_SEGMENTS` y colocado el valor adecuado en los registros de segmento, el siguiente paso es calcular la diferencia entre en dónde cargamos y compilamos para ejecutar(!). Recuerda que `setup.ld.S` tiene la siguiente definición: `. = 0` al inicio de la sección `.head.text`. Esto significa que el código en esta sección será compilado para ejecutarse a partir de la dirección `0`. Podemos ver esto al observar la salida del programa `objdump`:
 
 ```
 arch/x86/boot/compressed/vmlinux:     file format elf64-x86-64
@@ -176,14 +177,14 @@ Disassembly of section .head.text:
    1:   f6 86 11 02 00 00 40    testb  $0x40,0x211(%rsi)
 ```
 
-The `objdump` util tells us that the address of the `startup_32` is `0`. But actually it is not so. Our current goal is to know where actually we are. It is pretty simple to do in [long mode](https://en.wikipedia.org/wiki/Long_mode), because it support `rip` relative addressing, but currently we are in [protected mode](https://en.wikipedia.org/wiki/Protected_mode). We will use common pattern to know the address of the `startup_32`. We need to define a label and make a call to this label and pop the top of the stack to a register:
+`objdump` nos dice que la dirección de `startup_32` es `0`. Pero en realidad no es así. Nuestro objetivo actual es saber dónde realmente estamos. Esto es fácil de hacer en el [modo largo](https://es.wikipedia.org/wiki/Modo_largo), porque este soporta direcciónamiento relativo con `rip`. Pero actualmente no estamos en modo largo, estamos en [modo protegido](https://es.wikipedia.org/wiki/Modo_protegido). Usaremos una técnica común para hallar la dirección de `startup_32`. Primero, tenemos que definir una etiqueta, luego hacer una llamada a esta, y luego extraer el tope de la pila (pop) de llamadas a un registro:
 
 ```assembly
 call label
 label: pop %reg
 ```
 
-After this a register will contain the address of a label. Let's look to the similar code which search address of the `startup_32` in the Linux kernel:
+Luego de esto el registro `%reg` contendrá la dirección de la etiqueta. Echemos un vistazo al código encargado de esto en el kernel Linux:
 
 ```assembly
 	leal	(BP_scratch+4)(%esi), %esp
