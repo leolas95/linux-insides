@@ -8,7 +8,7 @@ del kernel linux con quien sea que esté interesado en aprenderlos, junto a
 otros temas de bajo nivel.
 
 **Preguntas/Sugerencias**: No dudes en hacer cualquier pregunta o sugerencia
-contactandome en twitter [@leolas95](https://twitter.com/leolas95), reportando un
+contactándome en twitter [@leolas95](https://twitter.com/leolas95), reportando un
 problema, o simplemente enviandome un [correo](mailto:leolespaul@gmail.com)
 
 Soporte

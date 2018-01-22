@@ -9,7 +9,7 @@ puedes ver que hace algún tiempo empecé a involucrarme con programación a baj
 Escribí algunos artículos acerca de programación en ensamblador X86_64 para Linux.
 Al mismo tiempo, empecé a profundizar en el código fuente de Linux. Tengo un
 gran interés en comprender cómo funcionan las cosas a bajo nivel, cómo se
-ejecutan los programas en mi computadora, cómo se localizan(!)
+ejecutan los programas en mi computadora, cómo se alojan
 en memoria, cómo el kernel administra los procesos y la memoria, cómo la
 pila(!) de red trabaja a bajo nivel, y muchas otras cosas. Por lo tanto, decidí
 escribir otra serie de artículos acerca del kernel Linux para X86_64.
