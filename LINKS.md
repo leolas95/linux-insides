@@ -12,16 +12,13 @@ Modo protegido
 
 * [64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf](http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html)
 
-<<<<<<< HEAD
 Programación serial
-=======
-Memory management in the Linux kernel
+Administracion de memoria en el kernel Linux
 --------------------------------------
 
 * [Notes on the linux kernel VM subsystem by @lorenzo-stoakes](https://github.com/lorenzo-stoakes/linux-vm-notes)
 
-Serial programming
->>>>>>> upstream/master
+Programacion serial
 ------------------------
 
 * [8250 UART Programming](http://en.wikibooks.org/wiki/Serial_Programming/8250_UART_Programming#UART_Registers)
@@ -49,13 +46,10 @@ Estructuras de datos importantes
 
 * [task struct definition](http://lxr.free-electrons.com/source/include/linux/sched.h#L1274)
 
-<<<<<<< HEAD
 Otras arquitecturas
 ------------------------
 
 * [PowerPC and Linux Kernel Inside](http://www.systemcomputing.org/ppc/)
-=======
->>>>>>> upstream/master
 
 Useful links
 ------------------------
