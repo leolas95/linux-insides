@@ -80,9 +80,7 @@ Gracias a todos los contribuyentes:
 * [Jeremy Lacomis](https://github.com/jlacomis)
 * [Dubyah](https://github.com/Dubyah)
 * [Matthieu Tardy](https://github.com/c0riolis)
-<<<<<<< HEAD:contribuyentes.md
 * [stakewinner00](https://github.com/stakewinner00)
-=======
 * [michaelian ennis](https://github.com/mennis)
 * [Amitay Stern](https://github.com/amist)
 * [Matt Todd](https://github.com/mtodd)
@@ -119,4 +117,3 @@ Gracias a todos los contribuyentes:
 * [Edward Hu](https://github.com/BDHU)
 * [WarpspeedSCP](https://github.com/WarpspeedSCP)
 * [Gabriela Moldovan](https://github.com/gabi-250)
->>>>>>> upstream/master:contributors.md
