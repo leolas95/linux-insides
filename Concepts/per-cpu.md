@@ -1,7 +1,7 @@
 Per-CPU variables
 ================================================================================
 
-Per-CPU variables are one of the kernel features. You can understand what this feature means by reading its name. We can create a variable and each processor core will have its own copy of this variable. In this part, we take a closer look at this feature and try to understand how it is implemented and how it works.
+Per-CPU variables are one of the kernel features. You can understand the meaning of this feature by reading its name. We can create a variable and each processor core will have its own copy of this variable. In this part, we take a closer look at this feature and try to understand how it is implemented and how it works.
 
 The kernel provides an API for creating per-cpu variables - the `DEFINE_PER_CPU` macro:
 
@@ -10,15 +10,15 @@ The kernel provides an API for creating per-cpu variables - the `DEFINE_PER_CPU`
         DEFINE_PER_CPU_SECTION(type, name, "")
 ```
 
-This macro defined in the [include/linux/percpu-defs.h](https://github.com/torvalds/linux/blob/master/include/linux/percpu-defs.h) as many other macros for work with per-cpu variables. Now we will see how this feature is implemented.
+This macro defined in the [include/linux/percpu-defs.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/percpu-defs.h) as many other macros for work with per-cpu variables. Now we will see how this feature is implemented.
 
-Take a look at the `DECLARE_PER_CPU` definition. We see that it takes 2 parameters: `type` and `name`, so we can use it to create per-cpu variables, for example like this:
+Take a look at the `DEFINE_PER_CPU` definition. We see that it takes 2 parameters: `type` and `name`, so we can use it to create per-cpu variables, for example like this:
 
 ```C
 DEFINE_PER_CPU(int, per_cpu_n)
 ```
 
-We pass the type and the name of our variable. `DEFINE_PER_CPU` calls the `DEFINE_PER_CPU_SECTION` macro and passes the same two paramaters and empty string to it. Let's look at the definition of the `DEFINE_PER_CPU_SECTION`:
+We pass the type and the name of our variable. `DEFINE_PER_CPU` calls the `DEFINE_PER_CPU_SECTION` macro and passes the same two parameters and empty string to it. Let's look at the definition of the `DEFINE_PER_CPU_SECTION`:
 
 ```C
 #define DEFINE_PER_CPU_SECTION(type, name, sec)    \
@@ -53,7 +53,7 @@ It means that we will have a `per_cpu_n` variable in the `.data..percpu` section
 
 Ok, now we know that when we use the `DEFINE_PER_CPU` macro, a per-cpu variable in the `.data..percpu` section will be created. When the kernel initializes it calls the `setup_per_cpu_areas` function which loads the `.data..percpu` section multiple times, one section per CPU.
 
-Let's look at the per-CPU areas initialization process. It starts in the [init/main.c](https://github.com/torvalds/linux/blob/master/init/main.c) from the call of the `setup_per_cpu_areas` function which is defined in the [arch/x86/kernel/setup_percpu.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/setup_percpu.c).
+Let's look at the per-CPU areas initialization process. It starts in the [init/main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c) from the call of the `setup_per_cpu_areas` function which is defined in the [arch/x86/kernel/setup_percpu.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/setup_percpu.c).
 
 ```C
 pr_info("NR_CPUS:%d nr_cpumask_bits:%d nr_cpu_ids:%d nr_node_ids:%d\n",
@@ -80,7 +80,7 @@ percpu_alloc=	Select which percpu first chunk allocator to use.
 		and performance comparison.
 ```
 
-The [mm/percpu.c](https://github.com/torvalds/linux/blob/master/mm/percpu.c) contains the handler of this command line option:
+The [mm/percpu.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/mm/percpu.c) contains the handler of this command line option:
 
 ```C
 early_param("percpu_alloc", percpu_alloc_setup);
@@ -94,7 +94,7 @@ enum pcpu_fc pcpu_chosen_fc __initdata = PCPU_FC_AUTO;
 
 If the `percpu_alloc` parameter is not given to the kernel command line, the `embed` allocator will be used which embeds the first percpu chunk into bootmem with the [memblock](http://0xax.gitbooks.io/linux-insides/content/mm/linux-mm-1.html). The last allocator is the first chunk `page` allocator which maps the first chunk with `PAGE_SIZE` pages.
 
-As I wrote about first of all, we make a check of the first chunk allocator type in the `setup_per_cpu_areas`. First of all we check that first chunk allocator is not page:
+As I wrote above, first of all we make a check of the first chunk allocator type in the `setup_per_cpu_areas`. We check that first chunk allocator is not page:
 
 ```C
 if (pcpu_chosen_fc != PCPU_FC_PAGE) {
@@ -113,7 +113,7 @@ rc = pcpu_embed_first_chunk(PERCPU_FIRST_CHUNK_RESERVE,
 					    pcpu_fc_alloc, pcpu_fc_free);
 ```
 
-As I wrote above, the `pcpu_embed_first_chunk` function embeds the first percpu chunk into bootmem. As you can see we pass a couple of parameters to the `pcup_embed_first_chunk`, they are
+As shown above, the `pcpu_embed_first_chunk` function embeds the first percpu chunk into bootmem then we pass a couple of parameters to the `pcup_embed_first_chunk`. They are as follows:
 
 * `PERCPU_FIRST_CHUNK_RESERVE` - the size of the reserved space for the static `percpu` variables;
 * `dyn_size` - minimum free size for dynamic allocation in bytes;
@@ -122,7 +122,7 @@ As I wrote above, the `pcpu_embed_first_chunk` function embeds the first percpu 
 * `pcpu_fc_alloc` - function to allocate `percpu` page;
 * `pcpu_fc_free` - function to release `percpu` page.
 
-All of these parameters we calculate before the call of the `pcpu_embed_first_chunk`:
+We calculate all of these parameters before the call of the `pcpu_embed_first_chunk`:
 
 ```C
 const size_t dyn_size = PERCPU_MODULE_RESERVE + PERCPU_DYNAMIC_RESERVE - PERCPU_FIRST_CHUNK_RESERVE;
@@ -152,7 +152,7 @@ Let's look at the `get_cpu_var` implementation:
 }))
 ```
 
-The Linux kernel is preemptible and accessing a per-cpu variable requires us to know which processor the kernel running on. So, current code must not be preempted and moved to the another CPU while accessing a per-cpu variable. That's why first of all we can see a call of the `preempt_disable` function. After this we can see a call of the `this_cpu_ptr` macro, which looks like:
+The Linux kernel is preemptible and accessing a per-cpu variable requires us to know which processor the kernel is running on. So, current code must not be preempted and moved to the another CPU while accessing a per-cpu variable. That's why, first of all we can see a call of the `preempt_disable` function then a call of the `this_cpu_ptr` macro, which looks like:
 
 ```C
 #define this_cpu_ptr(ptr) raw_cpu_ptr(ptr)
@@ -196,7 +196,7 @@ do {
 
 which makes the given `ptr` type of `const void __percpu *`,
 
-After this we can see the call of the `SHIFT_PERCPU_PTR` macro with two parameters. At first parameter we pass our ptr and second we pass the cpu number to the `per_cpu_offset` macro:
+After this we can see the call of the `SHIFT_PERCPU_PTR` macro with two parameters. As first parameter we pass our ptr and for second parameter we pass the cpu number to the `per_cpu_offset` macro:
 
 ```C
 #define per_cpu_offset(x) (__per_cpu_offset[x])
@@ -218,7 +218,7 @@ where `NR_CPUS` is the number of CPUs. The `__per_cpu_offset` array is filled wi
 
 `RELOC_HIDE` just returns offset `(typeof(ptr)) (__ptr + (off))` and it will return a pointer to the variable.
 
-That's all! Of course it is not the full API, but a general overview. It can be hard to start with, but to understand per-cpu variables you mainly need to understand the  [include/linux/percpu-defs.h](https://github.com/torvalds/linux/blob/master/include/linux/percpu-defs.h) magic.
+That's all! Of course it is not the full API, but a general overview. It can be hard to start with, but to understand per-cpu variables you mainly need to understand the  [include/linux/percpu-defs.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/percpu-defs.h) magic.
 
 Let's again look at the algorithm of getting a pointer to a per-cpu variable:
 

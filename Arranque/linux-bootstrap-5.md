@@ -9,7 +9,7 @@ This is the fifth part of the `Kernel booting process` series. We saw transition
 Preparation before kernel decompression
 --------------------------------------------------------------------------------
 
-We stopped right before the jump on the 64-bit entry point - `startup_64` which is located in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S) source code file. We already saw the jump to the `startup_64` in the `startup_32`:
+We stopped right before the jump on the `64-bit` entry point - `startup_64` which is located in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/head_64.S) source code file. We already saw the jump to the `startup_64` in the `startup_32`:
 
 ```assembly
 	pushl	$__KERNEL_CS
@@ -24,7 +24,7 @@ We stopped right before the jump on the 64-bit entry point - `startup_64` which 
 	lret
 ```
 
-in the previous part, `startup_64` starts to work. Since we loaded the new Global Descriptor Table and there was CPU transition in other mode (64-bit mode in our case), we can see the setup of the data segments:
+in the previous part. Since we loaded the new `Global Descriptor Table` and there was CPU transition in other mode (`64-bit` mode in our case), we can see the setup of the data segments:
 
 ```assembly
 	.code64
@@ -38,7 +38,7 @@ ENTRY(startup_64)
 	movl	%eax, %gs
 ```
 
-in the beginning of the `startup_64`. All segment registers besides `cs` now point to the `ds` which is `0x18` (if you don't understand why it is `0x18`, read the previous part).
+in the beginning of the `startup_64`. All segment registers besides `cs` register now reseted as we joined into the `long mode`.
 
 The next step is computation of difference between where the kernel was compiled and where it was loaded:
 
@@ -55,10 +55,12 @@ The next step is computation of difference between where the kernel was compiled
 #endif
 	movq	$LOAD_PHYSICAL_ADDR, %rbp
 1:
-	leaq	z_extract_offset(%rbp), %rbx
+	movl	BP_init_size(%rsi), %ebx
+	subl	$_end, %ebx
+	addq	%rbp, %rbx
 ```
 
-`rbp` contains the decompressed kernel start address and after this code executes `rbx` register will contain address to relocate the kernel code for decompression. We already saw code like this in the `startup_32` ( you can read about it in the previous part - [Calculate relocation address](https://github.com/0xAX/linux-insides/blob/master/Booting/linux-bootstrap-4.md#calculate-relocation-address)), but we need to do this calculation again because the bootloader can use 64-bit boot protocol and `startup_32` just will not be executed in this case.
+The `rbp` contains the decompressed kernel start address and after this code executes `rbx` register will contain address to relocate the kernel code for decompression. We already saw code like this in the `startup_32` ( you can read about it in the previous part - [Calculate relocation address](https://github.com/0xAX/linux-insides/blob/master/Booting/linux-bootstrap-4.md#calculate-relocation-address)), but we need to do this calculation again because the bootloader can use 64-bit boot protocol and `startup_32` just will not be executed in this case.
 
 In the next step we can see setup of the stack pointer and resetting of the flags register:
 
@@ -69,7 +71,7 @@ In the next step we can see setup of the stack pointer and resetting of the flag
 	popfq
 ```
 
-As you can see above, the `rbx` register contains the start address of the kernel decompressor code and we just put this address with `boot_stack_end` offset to the `rsp` register which represents pointer to the top of the stack. After this step, the stack will be correct. You can find definition of the `boot_stack_end` in the end of [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S) assembly source code file:
+As you can see above, the `rbx` register contains the start address of the kernel decompressor code and we just put this address with `boot_stack_end` offset to the `rsp` register which represents pointer to the top of the stack. After this step, the stack will be correct. You can find definition of the `boot_stack_end` in the end of [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/head_64.S) assembly source code file:
 
 ```assembly
 	.bss
@@ -81,7 +83,7 @@ boot_stack:
 boot_stack_end:
 ```
 
-It located in the end of the `.bss` section, right before the `.pgtable`. If you will look into [arch/x86/boot/compressed/vmlinux.lds.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/vmlinux.lds.S) linker script, you will find  Definition of the `.bss` and `.pgtable` there.
+It located in the end of the `.bss` section, right before the `.pgtable`. If you will look into [arch/x86/boot/compressed/vmlinux.lds.S](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/vmlinux.lds.S) linker script, you will find  Definition of the `.bss` and `.pgtable` there.
 
 As we set the stack, now we can copy the compressed kernel to the address that we got above, when we calculated the relocation address of the decompressed kernel. Before details, let's look at this assembly code:
 
@@ -99,7 +101,7 @@ As we set the stack, now we can copy the compressed kernel to the address that w
 
 First of all we push `rsi` to the stack. We need preserve the value of `rsi`, because this register now stores a pointer to the `boot_params` which is real mode structure that contains booting related data (you must remember this structure, we filled it in the start of kernel setup). In the end of this code we'll restore the pointer to the `boot_params` into `rsi` again. 
 
-The next two `leaq` instructions calculates effective addresses of the `rip` and `rbx` with `_bss - 8` offset and put it to the `rsi` and `rdi`. Why do we calculate these addresses? Actually the compressed kernel image is located between this copying code (from `startup_32` to the current code) and the decompression code. You can verify this by looking at the linker script - [arch/x86/boot/compressed/vmlinux.lds.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/vmlinux.lds.S):
+The next two `leaq` instructions calculates effective addresses of the `rip` and `rbx` with `_bss - 8` offset and put it to the `rsi` and `rdi`. Why do we calculate these addresses? Actually the compressed kernel image is located between this copying code (from `startup_32` to the current code) and the decompression code. You can verify this by looking at the linker script - [arch/x86/boot/compressed/vmlinux.lds.S](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/vmlinux.lds.S):
 
 ```
 	. = 0;
@@ -171,39 +173,49 @@ In the previous paragraph we saw that the `.text` section starts with the `reloc
 
 We need to initialize the `.bss` section, because we'll soon jump to [C](https://en.wikipedia.org/wiki/C_%28programming_language%29) code. Here we just clear `eax`, put the address of `_bss` in `rdi` and `_ebss` in `rcx`, and fill it with zeros with the `rep stosq` instruction.
 
+<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
 At the end, we can see the call to the `decompress_kernel` function:
+=======
+At the end, we can see the call to the `extract_kernel` function:
+>>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 ```assembly
 	pushq	%rsi
-	movq	$z_run_size, %r9
-	pushq	%r9
 	movq	%rsi, %rdi
 	leaq	boot_heap(%rip), %rsi
 	leaq	input_data(%rip), %rdx
 	movl	$z_input_len, %ecx
 	movq	%rbp, %r8
 	movq	$z_output_len, %r9
-	call	decompress_kernel
-	popq	%r9
+	call	extract_kernel
 	popq	%rsi
 ```
 
+<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
 Again we set `rdi` to a pointer to the `boot_params` structure and call `decompress_kernel` from [arch/x86/boot/compressed/misc.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/misc.c) with seven arguments:
 
 * `rmode` - pointer to the [boot_params](https://github.com/torvalds/linux/blob/master//arch/x86/include/uapi/asm/bootparam.h#L114) structure which is filled by bootloader or during early kernel initialization;
+=======
+Again we set `rdi` to a pointer to the `boot_params` structure and preserve it on the stack. In the same time we set `rsi` to point to the area which should be usedd for kernel uncompression. The last step is preparation of the `extract_kernel` parameters and call of this function which will uncompres the kernel. The `extract_kernel` function is defined in the  [arch/x86/boot/compressed/misc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/misc.c) source code file and takes six arguments:
+
+* `rmode` - pointer to the [boot_params](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973//arch/x86/include/uapi/asm/bootparam.h#L114) structure which is filled by bootloader or during early kernel initialization;
+>>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 * `heap` - pointer to the `boot_heap` which represents start address of the early boot heap;
 * `input_data` - pointer to the start of the compressed kernel or in other words pointer to the `arch/x86/boot/compressed/vmlinux.bin.bz2`;
 * `input_len` - size of the compressed kernel;
 * `output` - start address of the future decompressed kernel;
 * `output_len` - size of decompressed kernel;
-* `run_size` - amount of space needed to run the kernel including `.bss` and `.brk` sections.
 
 All arguments will be passed through the registers according to [System V Application Binary Interface](http://www.x86-64.org/documentation/abi.pdf). We've finished all preparation and can now look at the kernel decompression.
 
 Kernel decompression
 --------------------------------------------------------------------------------
 
+<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
 As we saw in previous paragraph, the `decompress_kernel` function is defined in the [arch/x86/boot/compressed/misc.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/misc.c) source code file and takes seven arguments. This function starts with the video/console initialization that we already saw in the previous parts. We need to do this again because we don't know if we started in [real mode](https://en.wikipedia.org/wiki/Real_mode) or a bootloader was used, or whether the bootloader used the 32 or 64-bit boot protocol.
+=======
+As we saw in previous paragraph, the `extract_kernel` function is defined in the [arch/x86/boot/compressed/misc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/misc.c) source code file and takes six arguments. This function starts with the video/console initialization that we already saw in the previous parts. We need to do this again because we don't know if we started in [real mode](https://en.wikipedia.org/wiki/Real_mode) or a bootloader was used, or whether the bootloader used the `32` or `64-bit` boot protocol.
+>>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 After the first initialization steps, we store pointers to the start of the free memory and to the end of it:
 
@@ -212,7 +224,7 @@ free_mem_ptr     = heap;
 free_mem_end_ptr = heap + BOOT_HEAP_SIZE;
 ```
 
-where the `heap` is the second parameter of the `decompress_kernel` function which we got in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S):
+where the `heap` is the second parameter of the `extract_kernel` function which we got in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/head_64.S):
 
 ```assembly
 leaq	boot_heap(%rip), %rsi
@@ -225,6 +237,7 @@ boot_heap:
 	.fill BOOT_HEAP_SIZE, 1, 0
 ```
 
+<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
 where the `BOOT_HEAP_SIZE` is macro which expands to `0x8000` (`0x400000` in a case of `bzip2` kernel) and represents the size of the heap.
 
 After heap pointers initialization, the next step is the call of the `choose_kernel_location` function from [arch/x86/boot/compressed/aslr.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/aslr.c#L298) source code file. As we can guess from the function name, it chooses the memory location where the kernel image will be decompressed. It may look weird that we need to find or even `choose` location where to decompress the compressed kernel image, but the Linux kernel supports [kASLR](https://en.wikipedia.org/wiki/Address_space_layout_randomization) which allows decompression of the kernel into a random address, for security reasons. Let's open the [arch/x86/boot/compressed/aslr.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/aslr.c#L298) source code file and look at `choose_kernel_location`.
@@ -374,49 +387,51 @@ region.size = entry->size;
 ```
 
 As we store these values, we align the `region.start` as we did it in the `find_random_addr` function and check that we didn't get an address that is outside the original memory region:
+=======
+where the `BOOT_HEAP_SIZE` is macro which expands to `0x10000` (`0x400000` in a case of `bzip2` kernel) and represents the size of the heap.
+
+After heap pointers initialization, the next step is the call of the `choose_random_location` function from [arch/x86/boot/compressed/kaslr.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/kaslr.c#L425) source code file. As we can guess from the function name, it chooses the memory location where the kernel image will be decompressed. It may look weird that we need to find or even `choose` location where to decompress the compressed kernel image, but the Linux kernel supports [kASLR](https://en.wikipedia.org/wiki/Address_space_layout_randomization) which allows decompression of the kernel into a random address, for security reasons.
+
+We will not consider randomization of the Linux kernel load address in this part, but will do it in the next part.
+
+Now let's back to [misc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/misc.c#L404). After getting the address for the kernel image, there need to be some checks to be sure that the retrieved random address is correctly aligned and address is not wrong:
+>>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 ```C
-region.start = ALIGN(region.start, CONFIG_PHYSICAL_ALIGN);
+if ((unsigned long)output & (MIN_KERNEL_ALIGN - 1))
+	error("Destination physical address inappropriately aligned");
 
-if (region.start > entry->addr + entry->size)
-	return;
-```
-
+<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
 In the next step, we reduce the size of the memory region to not include rejected regions at the start, and ensure that the last address in the memory region is smaller than `CONFIG_RANDOMIZE_BASE_MAX_OFFSET`, so that the end of the kernel image will be less than the maximum `aslr` offset:
+=======
+if (virt_addr & (MIN_KERNEL_ALIGN - 1))
+	error("Destination virtual address inappropriately aligned");
+>>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
-```C
-region.size -= region.start - entry->addr;
+if (heap > 0x3fffffffffffUL)
+	error("Destination address too large");
 
-if (region.start + region.size > CONFIG_RANDOMIZE_BASE_MAX_OFFSET)
-		region.size = CONFIG_RANDOMIZE_BASE_MAX_OFFSET - region.start;
-```
+if (virt_addr + max(output_len, kernel_total_size) > KERNEL_IMAGE_SIZE)
+	error("Destination virtual address is beyond the kernel mapping area");
 
+<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
 Finally, we go through all unsafe memory regions and check that the region does not overlap unsafe areas, such as kernel command line, initrd, etc...:
+=======
+if ((unsigned long)output != LOAD_PHYSICAL_ADDR)
+    error("Destination address does not match LOAD_PHYSICAL_ADDR");
+>>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
-```C
-for (img.start = region.start, img.size = image_size ;
-	     mem_contains(&region, &img) ;
-	     img.start += CONFIG_PHYSICAL_ALIGN) {
-		if (mem_avoid_overlap(&img))
-			continue;
-		slots_append(img.start);
-	}
+if (virt_addr != LOAD_PHYSICAL_ADDR)
+	error("Destination virtual address changed when not relocatable");
 ```
 
-If the memory region does not overlap unsafe regions we call the `slots_append` function with the start address of the region. `slots_append` function just collects start addresses of memory regions to the `slots` array:
+After all these checks we will see the familiar message:
 
-```C
-slots[slot_max++] = addr;
+```
+Decompressing Linux... 
 ```
 
-which is defined as:
-
-```C
-static unsigned long slots[CONFIG_RANDOMIZE_BASE_MAX_OFFSET /
-			   CONFIG_PHYSICAL_ALIGN];
-static unsigned long slot_max;
-```
-
+<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
 After `process_e820_entry` is done, we will have an array of addresses that are safe for the decompressed kernel. Then we call `slots_fetch_random` function to get a random item from this array:
 
 ```C
@@ -434,9 +449,15 @@ After all these checks we will see the familiar message:
 
 ```
 Decompressing Linux... 
+=======
+and call the `__decompress` function:
+
+```C
+__decompress(input_data, input_len, NULL, NULL, output, output_len, NULL, error);
+>>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 ```
 
-and call the `__decompress` function which will decompress the kernel. The `__decompress` function depends on what decompression algorithm was chosen during kernel compilation:
+which will decompress the kernel. The implementation of the `__decompress` function depends on what decompression algorithm was chosen during kernel compilation:
 
 ```C
 #ifdef CONFIG_KERNEL_GZIP
@@ -486,7 +507,11 @@ Program Headers:
                  0x0000000000138000 0x000000000029b000  RWE    200000
 ```
 
+<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
 The goal of the `parse_elf` function is to load these segments to the `output` address we got from the `choose_kernel_location` function. This function starts with checking the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) signature:
+=======
+The goal of the `parse_elf` function is to load these segments to the `output` address we got from the `choose_random_location` function. This function starts with checking the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) signature:
+>>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 ```C
 Elf64_Ehdr ehdr;
@@ -495,11 +520,11 @@ Elf64_Phdr *phdrs, *phdr;
 memcpy(&ehdr, output, sizeof(ehdr));
 
 if (ehdr.e_ident[EI_MAG0] != ELFMAG0 ||
-   ehdr.e_ident[EI_MAG1] != ELFMAG1 ||
-   ehdr.e_ident[EI_MAG2] != ELFMAG2 ||
-   ehdr.e_ident[EI_MAG3] != ELFMAG3) {
-   error("Kernel is not a valid ELF file");
-   return;
+    ehdr.e_ident[EI_MAG1] != ELFMAG1 ||
+    ehdr.e_ident[EI_MAG2] != ELFMAG2 ||
+    ehdr.e_ident[EI_MAG3] != ELFMAG3) {
+        error("Kernel is not a valid ELF file");
+        return;
 }
 ```
 
@@ -517,18 +542,29 @@ and if it's not valid, it prints an error message and halts. If we got a valid `
 #else
 			dest = (void *)(phdr->p_paddr);
 #endif
-			memcpy(dest,
-			       output + phdr->p_offset,
-			       phdr->p_filesz);
+			memmove(dest, output + phdr->p_offset, phdr->p_filesz);
 			break;
-		default: /* Ignore other PT_* */ break;
+		default:
+			break;
 		}
 	}
 ```
 
+<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
 That's all. From now on, all loadable segments are in the correct place. The last `handle_relocations` function adjusts addresses in the kernel image, and is called only if the `kASLR` was enabled during kernel configuration.
 
 After the kernel is relocated, we return back from the `decompress_kernel` to [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S). The address of the kernel will be in the `rax` register and we jump to it:
+=======
+That's all.
+
+From this moment, all loadable segments are in the correct place.
+
+The next step after the `parse_elf` function is the call of the `handle_relocations` function. Implementation of this function depends on the `CONFIG_X86_NEED_RELOCS` kernel configuration option and if it is enabled, this function adjusts addresses in the kernel image, and is called only if the `CONFIG_RANDOMIZE_BASE` configuration option was enabled during kernel configuration. Implementation of the `handle_relocations` function is easy enough. This function subtracts value of the `LOAD_PHYSICAL_ADDR` from the value of the base load address of the kernel and thus we obtain the difference between where the kernel was linked to load and where it was actually loaded. After this we can perform kernel relocation as we know actual address where the kernel was loaded, its address where it was linked to run and relocation table which is in the end of the kernel image.
+
+After the kernel is relocated, we return back from the `extract_kernel` to [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/head_64.S).
+
+The address of the kernel will be in the `rax` register and we jump to it:
+>>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 ```assembly
 jmp	*%rax
@@ -539,9 +575,15 @@ That's all. Now we are in the kernel!
 Conclusion
 --------------------------------------------------------------------------------
 
+<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
 This is the end of the fifth and the last part about linux kernel booting process. We will not see posts about kernel booting anymore (maybe updates to this and previous posts), but there will be many posts about other kernel internals. 
 
 Next chapter will be about kernel initialization and we will see the first steps in the Linux kernel initialization code.
+=======
+This is the end of the fifth part about linux kernel booting process. We will not see posts about kernel booting anymore (maybe updates to this and previous posts), but there will be many posts about other kernel internals. 
+
+Next chapter will describe more advanced details about linux kernel booting process, like a load address randomization and etc.
+>>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 If you have any questions or suggestions write me a comment or ping me in [twitter](https://twitter.com/0xAX).
 

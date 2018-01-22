@@ -6,9 +6,9 @@ Introducción
 
 Las `Cpumasks` es un método especial proporcionado por el kernel Linux de almacenar información acerca de las CPUs del sistema. Los archivos fuente y cabeceras relevantes que contienen la API para la manipulación de `Cpumasks` son:
 
-* [include/linux/cpumask.h](https://github.com/torvalds/linux/blob/master/include/linux/cpumask.h)
-* [lib/cpumask.c](https://github.com/torvalds/linux/blob/master/lib/cpumask.c)
-* [kernel/cpu.c](https://github.com/torvalds/linux/blob/master/kernel/cpu.c)
+* [include/linux/cpumask.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/cpumask.h)
+* [lib/cpumask.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/lib/cpumask.c)
+* [kernel/cpu.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/cpu.c)
 
 Como dice el comentario de [include/linux/cpumask.h](https://github.com/torvalds/linux/blob/master/include/linux/cpumask.h): Las Cpumasks proporcionan un mapa de bits apropiado para representar el conjunto de CPU's en un sistema, una posición de bit por número de CPU. Ya vimos un poco acerca de las cpumask en la función `boot_cpu_init` de la parte [entry point del Kernel](http://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-4.html). Esta función establece los estados de la CPU "online", "active", "present" y "possible" para el arranque.
 
