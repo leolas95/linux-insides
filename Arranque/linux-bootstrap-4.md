@@ -189,11 +189,11 @@ Luego de esto el registro `%reg` contendrá la dirección de la etiqueta. Echemo
 ```assembly
 	leal	(BP_scratch+4)(%esi), %esp
 	call	1f
-1:  popl	%ebp
+1:      popl	%ebp
 	subl	$1b, %ebp
 ```
 
-As you remember from the previous part, the `esi` register contains the address of the [boot_params](https://github.com/torvalds/linux/blob/master/arch/x86/include/uapi/asm/bootparam.h#L113) structure which was filled before we moved to the protected mode. The `boot_params` structure contains a special field `scratch` with offset `0x1e4`. These four bytes field will be temporary stack for `call` instruction. We are getting the address of the `scratch` field + 4 bytes and putting it in the `esp` register. We add `4` bytes to the base of the `BP_scratch` field because, as just described, it will be a temporary stack and the stack grows from top to down in `x86_64` architecture. So our stack pointer will point to the top of the stack. Next we can see the pattern that I've described above. We make a call to the `1f` label and put the address of this label to the `ebp` register, because we have return address on the top of stack after the `call` instruction will be executed. So, for now we have an address of the `1f` label and now it is easy to get address of the `startup_32`. We just need to subtract address of label from the address which we got from the stack:
+Como recordarás de la parte anterior, el registro `esi` contiene la dirección de la [estructura *boot params*](https://github.com/torvalds/linux/blob/master/arch/x86/include/uapi/asm/bootparam.h#L152), que fue llenada antes de que nos movieramos al modo protegido. La estructura `boot_params` contiene un campo especial, `scratch` (`__u32 scratch`), desplazado `0x1e4` bytes dentro del espacio de memoria de la estructura. Este campo de 4 bytes será la pila de llamadas temporal para la instrucción `call`. En el código mostrado arriba, estamos obteniendo la dirección del campo `scratch` + 4 bytes y colocandola en el regisro `esp`. Estamos sumando 4 bytes al campo base `BP_scratch` porque, como se mencionó, `scratch` será un espacio temporal para la pila de llamadas, y en la arquitectura `x86_64` la pila crece en dirección descendente (de arriba hacia abajo, desde las direcciones más altas hacia las más bajas). Por lo que luego de ejecutada la primera instrucción, nuestro apuntador de pila apuntará al tope de la pila. Seguidamente, podemos observar el patrón descrito arriba; hacemos una llamada a la etiqueta `1f`, y colocamos la dirección de esta etiqueta en el registro `ebp`, porque luego de ejecutar la instrucción `call` la dirección de retorno está en el tope de la pila. Así que por ahora, tenemos la dirección de la etiqueta `1f` y es fácil obtener la dirección de `startup_32`. Solo tenemos que restar la dirección de la etiqueta de la dirección que obtuvimos de la pila:
 
 ```
 startup_32 (0x0)     +-----------------------+
@@ -211,7 +211,7 @@ startup_32 (0x0)     +-----------------------+
                      +-----------------------+
 ```
 
-`startup_32` is linked to run at address `0x0` and this means that `1f` has the address `0x0 + offset to 1f`, approximately `0x21` bytes. The `ebp` register contains the real physical address of the `1f` label. So, if we subtract `1f` from the `ebp` we will get the real physical address of the `startup_32`. The Linux kernel [boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt) describes that the base of the protected mode kernel is `0x100000`. We can verify this with [gdb](https://en.wikipedia.org/wiki/GNU_Debugger). Let's start the debugger and put breakpoint to the `1f` address, which is `0x100021`. If this is correct we will see `0x100021` in the `ebp` register:
+`startup_32` está enlazado para ejecutarse en la dirección `0x0`, y esto significa que `1f` tiene la dirección `0x0 + desplazamiento a 1f`, aproximadamente `0x21` bytes. El registro `ebp` conteiene la dirección física real de la etiqueta `1f`. Por lo tanto, si restamos `1f` de `ebp`, obtenemos la dirección física real de `startup_32`. El [protocolo de arranque](https://www.kernel.org/doc/Documentation/x86/boot.txt) del kernel Linux describe que la base del kernel de modo protegido es `0x100000`. Podemos verificarlo usando [gdb](https://en.wikipedia.org/wiki/GNU_Debugger). Iniciemos el depurador y pongamos un _breakpoint_ en la dirección `1f`, que es `0x100021`. Si lo que hicimos es correcto, deberiamos ver el valor `0x100021` en el registro `ebp`:
 
 ```
 $ gdb
@@ -243,7 +243,7 @@ fs             0x18	0x18
 gs             0x18	0x18
 ```
 
-If we execute the next instruction, `subl $1b, %ebp`, we will see:
+Si ejecutamos la siguiente instrucción, `subl $1b, %ebp`, veremos lo siguiente:
 
 ```
 nexti
@@ -252,7 +252,7 @@ ebp            0x100000	0x100000
 ...
 ```
 
-Ok, that's true. The address of the `startup_32` is `0x100000`. After we know the address of the `startup_32` label, we can prepare for the transition to [long mode](https://en.wikipedia.org/wiki/Long_mode). Our next goal is to setup the stack and verify that the CPU supports long mode and [SSE](http://en.wikipedia.org/wiki/Streaming_SIMD_Extensions).
+Por lo que se verifican nuestras suposiciones, la dirección de `startup_32` es `0x100000`. Luego de que sepamos la dirección de la etiqueta `startup_32`, podemos prepararnos para la transición al [modo largo](https://en.wikipedia.org/wiki/Long_mode). Nuestro siguiente objetivo es preparar la pila y verificar que el CPU tenga soporte para el modo largo y [SSE](http://en.wikipedia.org/wiki/Streaming_SIMD_Extensions).
 
 Stack setup and CPU verification
 --------------------------------------------------------------------------------
