@@ -173,11 +173,7 @@ In the previous paragraph we saw that the `.text` section starts with the `reloc
 
 We need to initialize the `.bss` section, because we'll soon jump to [C](https://en.wikipedia.org/wiki/C_%28programming_language%29) code. Here we just clear `eax`, put the address of `_bss` in `rdi` and `_ebss` in `rcx`, and fill it with zeros with the `rep stosq` instruction.
 
-<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
-At the end, we can see the call to the `decompress_kernel` function:
-=======
 At the end, we can see the call to the `extract_kernel` function:
->>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 ```assembly
 	pushq	%rsi
@@ -191,15 +187,10 @@ At the end, we can see the call to the `extract_kernel` function:
 	popq	%rsi
 ```
 
-<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
-Again we set `rdi` to a pointer to the `boot_params` structure and call `decompress_kernel` from [arch/x86/boot/compressed/misc.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/misc.c) with seven arguments:
-
-* `rmode` - pointer to the [boot_params](https://github.com/torvalds/linux/blob/master//arch/x86/include/uapi/asm/bootparam.h#L114) structure which is filled by bootloader or during early kernel initialization;
-=======
-Again we set `rdi` to a pointer to the `boot_params` structure and preserve it on the stack. In the same time we set `rsi` to point to the area which should be usedd for kernel uncompression. The last step is preparation of the `extract_kernel` parameters and call of this function which will uncompres the kernel. The `extract_kernel` function is defined in the  [arch/x86/boot/compressed/misc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/misc.c) source code file and takes six arguments:
+Again we set `rdi` to a pointer to the `boot_params` structure and preserve it on the stack. In the same time we set `rsi` to point to the area which should be used for kernel uncompression. The last step is preparation of the `extract_kernel` parameters and call of this function which will uncompres the kernel. The `extract_kernel` function is defined in the  [arch/x86/boot/compressed/misc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/misc.c) source code file and takes six arguments:
+>>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 * `rmode` - pointer to the [boot_params](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973//arch/x86/include/uapi/asm/bootparam.h#L114) structure which is filled by bootloader or during early kernel initialization;
->>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 * `heap` - pointer to the `boot_heap` which represents start address of the early boot heap;
 * `input_data` - pointer to the start of the compressed kernel or in other words pointer to the `arch/x86/boot/compressed/vmlinux.bin.bz2`;
 * `input_len` - size of the compressed kernel;
@@ -211,11 +202,7 @@ All arguments will be passed through the registers according to [System V Applic
 Kernel decompression
 --------------------------------------------------------------------------------
 
-<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
-As we saw in previous paragraph, the `decompress_kernel` function is defined in the [arch/x86/boot/compressed/misc.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/misc.c) source code file and takes seven arguments. This function starts with the video/console initialization that we already saw in the previous parts. We need to do this again because we don't know if we started in [real mode](https://en.wikipedia.org/wiki/Real_mode) or a bootloader was used, or whether the bootloader used the 32 or 64-bit boot protocol.
-=======
 As we saw in previous paragraph, the `extract_kernel` function is defined in the [arch/x86/boot/compressed/misc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/misc.c) source code file and takes six arguments. This function starts with the video/console initialization that we already saw in the previous parts. We need to do this again because we don't know if we started in [real mode](https://en.wikipedia.org/wiki/Real_mode) or a bootloader was used, or whether the bootloader used the `32` or `64-bit` boot protocol.
->>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 After the first initialization steps, we store pointers to the start of the free memory and to the end of it:
 
@@ -237,157 +224,6 @@ boot_heap:
 	.fill BOOT_HEAP_SIZE, 1, 0
 ```
 
-<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
-where the `BOOT_HEAP_SIZE` is macro which expands to `0x8000` (`0x400000` in a case of `bzip2` kernel) and represents the size of the heap.
-
-After heap pointers initialization, the next step is the call of the `choose_kernel_location` function from [arch/x86/boot/compressed/aslr.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/aslr.c#L298) source code file. As we can guess from the function name, it chooses the memory location where the kernel image will be decompressed. It may look weird that we need to find or even `choose` location where to decompress the compressed kernel image, but the Linux kernel supports [kASLR](https://en.wikipedia.org/wiki/Address_space_layout_randomization) which allows decompression of the kernel into a random address, for security reasons. Let's open the [arch/x86/boot/compressed/aslr.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/aslr.c#L298) source code file and look at `choose_kernel_location`.
-
-First, `choose_kernel_location` tries to find the `kaslr` option in the Linux kernel command line if `CONFIG_HIBERNATION` is set, and `nokaslr` otherwise:
-
-```C
-#ifdef CONFIG_HIBERNATION
-	if (!cmdline_find_option_bool("kaslr")) {
-		debug_putstr("KASLR disabled by default...\n");
-		goto out;
-	}
-#else
-	if (cmdline_find_option_bool("nokaslr")) {
-		debug_putstr("KASLR disabled by cmdline...\n");
-		goto out;
-	}
-#endif
-```
-
-If the `CONFIG_HIBERNATION` kernel configuration option is enabled during kernel configuration and there is no `kaslr` option in the Linux kernel command line, it prints `KASLR disabled by default...` and jumps to the `out` label:
-
-```C
-out:
-	return (unsigned char *)choice;
-```
-
-which just returns the `output` parameter which we passed to the `choose_kernel_location`, unchanged. If the `CONFIG_HIBERNATION` kernel configuration option is disabled and the `nokaslr` option is in the kernel command line, we jump to `out` again.
-
-For now, let's assume the kernel was configured with randomization enabled and try to understand what `kASLR` is. We can find information about it in the [documentation](https://github.com/torvalds/linux/blob/master/Documentation/kernel-parameters.txt):
-
-```
-kaslr/nokaslr [X86]
-
-Enable/disable kernel and module base offset ASLR
-(Address Space Layout Randomization) if built into
-the kernel. When CONFIG_HIBERNATION is selected,
-kASLR is disabled by default. When kASLR is enabled,
-hibernation will be disabled.
-```
-
-It means that we can pass the `kaslr` option to the kernel's command line and get a random address for the decompressed kernel (you can read more about ASLR [here](https://en.wikipedia.org/wiki/Address_space_layout_randomization)). So, our current goal is to find random address where we can `safely` to decompress the Linux kernel. I repeat: `safely`. What does it mean in this context? You may remember that besides the code of decompressor and directly the kernel image, there are some unsafe places in memory. For example, the [initrd](https://en.wikipedia.org/wiki/Initrd) image is in memory too, and we must not overlap it with the decompressed kernel.
-
-The next function will help us to find a safe place where we can decompress kernel. This function is `mem_avoid_init`. It defined in the same source code [file](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/aslr.c), and takes four arguments that we already saw in the `decompress_kernel` function:
-
-* `input_data` - pointer to the start of the compressed kernel, or in other words, the pointer to `arch/x86/boot/compressed/vmlinux.bin.bz2`;
-* `input_len` - the size of the compressed kernel;
-* `output` - the start address of the future decompressed kernel;
-* `output_len` - the size of decompressed kernel.
-
-The main point of this function is to fill array of the `mem_vector` structures:
-
-```C
-#define MEM_AVOID_MAX 5
-
-static struct mem_vector mem_avoid[MEM_AVOID_MAX];
-```
-
-where the `mem_vector` structure contains information about unsafe memory regions:
-
-```C
-struct mem_vector {
-	unsigned long start;
-	unsigned long size;
-};
-```
-
-The implementation of the `mem_avoid_init` is pretty simple. Let's look on the part of this function:
-
-```C
-	...
-	...
-	...
-	initrd_start  = (u64)real_mode->ext_ramdisk_image << 32;
-	initrd_start |= real_mode->hdr.ramdisk_image;
-	initrd_size  = (u64)real_mode->ext_ramdisk_size << 32;
-	initrd_size |= real_mode->hdr.ramdisk_size;
-	mem_avoid[1].start = initrd_start;
-	mem_avoid[1].size = initrd_size;
-	...
-	...
-	...
-```
-
-Here we can see calculation of the [initrd](http://en.wikipedia.org/wiki/Initrd) start address and size. The `ext_ramdisk_image` is the high `32-bits` of the `ramdisk_image` field from the setup header, and `ext_ramdisk_size` is the high 32-bits of the `ramdisk_size` field from the [boot protocol](https://github.com/torvalds/linux/blob/master/Documentation/x86/boot.txt):
-
-```
-Offset	Proto	Name		Meaning
-/Size
-...
-...
-...
-0218/4	2.00+	ramdisk_image	initrd load address (set by boot loader)
-021C/4	2.00+	ramdisk_size	initrd size (set by boot loader)
-...
-```
-
-And `ext_ramdisk_image` and `ext_ramdisk_size` can be found in the [Documentation/x86/zero-page.txt](https://github.com/torvalds/linux/blob/master/Documentation/x86/zero-page.txt):
-
-```
-Offset	Proto	Name		Meaning
-/Size
-...
-...
-...
-0C0/004	ALL	ext_ramdisk_image ramdisk_image high 32bits
-0C4/004	ALL	ext_ramdisk_size  ramdisk_size high 32bits
-...
-```
-
-So we're taking `ext_ramdisk_image` and `ext_ramdisk_size`, shifting them left on `32` (now they will contain low 32-bits in the high 32-bit bits) and getting start address of the `initrd` and size of it. After this we store these values in the `mem_avoid` array.
-
-The next step after we've collected all unsafe memory regions in the `mem_avoid` array will be searching for a random address that does not overlap with the unsafe regions, using the `find_random_addr` function. First of all we can see the alignment of the output address in the `find_random_addr` function:
-
-```C
-minimum = ALIGN(minimum, CONFIG_PHYSICAL_ALIGN);
-```
-
-You can remember `CONFIG_PHYSICAL_ALIGN` configuration option from the previous part. This option provides the value to which kernel should be aligned and it is `0x200000` by default. Once we have the aligned output address, we go through the memory regions which we got with the help of the BIOS [e820](https://en.wikipedia.org/wiki/E820) service and collect regions suitable for the decompressed kernel image:
-
-```C
-for (i = 0; i < real_mode->e820_entries; i++) {
-	process_e820_entry(&real_mode->e820_map[i], minimum, size);
-}
-```
-
-Recall that we collected `e820_entries` in the second part of the [Kernel booting process part 2](https://github.com/0xAX/linux-insides/blob/master/Booting/linux-bootstrap-2.md#memory-detection). The `process_e820_entry` function does some checks that an `e820` memory region is not `non-RAM`, that the start address of the memory region is not bigger than maximum allowed `aslr` offset, and that the memory region is above the minimum load location:
-
-```C
-struct mem_vector region, img;
-
-if (entry->type != E820_RAM)
-	return;
-
-if (entry->addr >= CONFIG_RANDOMIZE_BASE_MAX_OFFSET)
-	return;
-
-if (entry->addr + entry->size < minimum)
-	return;
-```
-
-After this, we store an `e820` memory region start address and the size in the `mem_vector` structure (we saw definition of this structure above):
-
-```C
-region.start = entry->addr;
-region.size = entry->size;
-```
-
-As we store these values, we align the `region.start` as we did it in the `find_random_addr` function and check that we didn't get an address that is outside the original memory region:
-=======
 where the `BOOT_HEAP_SIZE` is macro which expands to `0x10000` (`0x400000` in a case of `bzip2` kernel) and represents the size of the heap.
 
 After heap pointers initialization, the next step is the call of the `choose_random_location` function from [arch/x86/boot/compressed/kaslr.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/kaslr.c#L425) source code file. As we can guess from the function name, it chooses the memory location where the kernel image will be decompressed. It may look weird that we need to find or even `choose` location where to decompress the compressed kernel image, but the Linux kernel supports [kASLR](https://en.wikipedia.org/wiki/Address_space_layout_randomization) which allows decompression of the kernel into a random address, for security reasons.
@@ -395,18 +231,13 @@ After heap pointers initialization, the next step is the call of the `choose_ran
 We will not consider randomization of the Linux kernel load address in this part, but will do it in the next part.
 
 Now let's back to [misc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/misc.c#L404). After getting the address for the kernel image, there need to be some checks to be sure that the retrieved random address is correctly aligned and address is not wrong:
->>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 ```C
 if ((unsigned long)output & (MIN_KERNEL_ALIGN - 1))
 	error("Destination physical address inappropriately aligned");
 
-<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
-In the next step, we reduce the size of the memory region to not include rejected regions at the start, and ensure that the last address in the memory region is smaller than `CONFIG_RANDOMIZE_BASE_MAX_OFFSET`, so that the end of the kernel image will be less than the maximum `aslr` offset:
-=======
 if (virt_addr & (MIN_KERNEL_ALIGN - 1))
 	error("Destination virtual address inappropriately aligned");
->>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 if (heap > 0x3fffffffffffUL)
 	error("Destination address too large");
@@ -414,12 +245,8 @@ if (heap > 0x3fffffffffffUL)
 if (virt_addr + max(output_len, kernel_total_size) > KERNEL_IMAGE_SIZE)
 	error("Destination virtual address is beyond the kernel mapping area");
 
-<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
-Finally, we go through all unsafe memory regions and check that the region does not overlap unsafe areas, such as kernel command line, initrd, etc...:
-=======
 if ((unsigned long)output != LOAD_PHYSICAL_ADDR)
     error("Destination address does not match LOAD_PHYSICAL_ADDR");
->>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 if (virt_addr != LOAD_PHYSICAL_ADDR)
 	error("Destination virtual address changed when not relocatable");
@@ -431,30 +258,10 @@ After all these checks we will see the familiar message:
 Decompressing Linux... 
 ```
 
-<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
-After `process_e820_entry` is done, we will have an array of addresses that are safe for the decompressed kernel. Then we call `slots_fetch_random` function to get a random item from this array:
-
-```C
-if (slot_max == 0)
-	return 0;
-
-return slots[get_random_long() % slot_max];
-```
-
-where `get_random_long` function checks different CPU flags as `X86_FEATURE_RDRAND` or `X86_FEATURE_TSC` and chooses a method for getting random number (it can be the RDRAND instruction, the time stamp counter, the programmable interval timer, etc...). After retrieving the random address, execution of the `choose_kernel_location` is finished.
-
-Now let's back to [misc.c](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/misc.c#L404). After getting the address for the kernel image, there need to be some checks to be sure that the retrieved random address is correctly aligned and address is not wrong. 
-
-After all these checks we will see the familiar message:
-
-```
-Decompressing Linux... 
-=======
 and call the `__decompress` function:
 
 ```C
 __decompress(input_data, input_len, NULL, NULL, output, output_len, NULL, error);
->>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 ```
 
 which will decompress the kernel. The implementation of the `__decompress` function depends on what decompression algorithm was chosen during kernel compilation:
@@ -507,11 +314,7 @@ Program Headers:
                  0x0000000000138000 0x000000000029b000  RWE    200000
 ```
 
-<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
-The goal of the `parse_elf` function is to load these segments to the `output` address we got from the `choose_kernel_location` function. This function starts with checking the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) signature:
-=======
 The goal of the `parse_elf` function is to load these segments to the `output` address we got from the `choose_random_location` function. This function starts with checking the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) signature:
->>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 ```C
 Elf64_Ehdr ehdr;
@@ -550,11 +353,6 @@ and if it's not valid, it prints an error message and halts. If we got a valid `
 	}
 ```
 
-<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
-That's all. From now on, all loadable segments are in the correct place. The last `handle_relocations` function adjusts addresses in the kernel image, and is called only if the `kASLR` was enabled during kernel configuration.
-
-After the kernel is relocated, we return back from the `decompress_kernel` to [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S). The address of the kernel will be in the `rax` register and we jump to it:
-=======
 That's all.
 
 From this moment, all loadable segments are in the correct place.
@@ -564,7 +362,6 @@ The next step after the `parse_elf` function is the call of the `handle_relocati
 After the kernel is relocated, we return back from the `extract_kernel` to [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/head_64.S).
 
 The address of the kernel will be in the `rax` register and we jump to it:
->>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 ```assembly
 jmp	*%rax
@@ -575,15 +372,9 @@ That's all. Now we are in the kernel!
 Conclusion
 --------------------------------------------------------------------------------
 
-<<<<<<< HEAD:Arranque/linux-bootstrap-5.md
-This is the end of the fifth and the last part about linux kernel booting process. We will not see posts about kernel booting anymore (maybe updates to this and previous posts), but there will be many posts about other kernel internals. 
-
-Next chapter will be about kernel initialization and we will see the first steps in the Linux kernel initialization code.
-=======
 This is the end of the fifth part about linux kernel booting process. We will not see posts about kernel booting anymore (maybe updates to this and previous posts), but there will be many posts about other kernel internals. 
 
 Next chapter will describe more advanced details about linux kernel booting process, like a load address randomization and etc.
->>>>>>> upstream/master:Booting/linux-bootstrap-5.md
 
 If you have any questions or suggestions write me a comment or ping me in [twitter](https://twitter.com/0xAX).
 
@@ -593,10 +384,10 @@ Links
 --------------------------------------------------------------------------------
 
 * [address space layout randomization](https://en.wikipedia.org/wiki/Address_space_layout_randomization)
-* [initrd](http://en.wikipedia.org/wiki/Initrd)
-* [long mode](http://en.wikipedia.org/wiki/Long_mode)
+* [initrd](https://en.wikipedia.org/wiki/Initrd)
+* [long mode](https://en.wikipedia.org/wiki/Long_mode)
 * [bzip2](http://www.bzip.org/)
-* [RDdRand instruction](http://en.wikipedia.org/wiki/RdRand)
-* [Time Stamp Counter](http://en.wikipedia.org/wiki/Time_Stamp_Counter)
-* [Programmable Interval Timers](http://en.wikipedia.org/wiki/Intel_8253)
+* [RdRand instruction](https://en.wikipedia.org/wiki/RdRand)
+* [Time Stamp Counter](https://en.wikipedia.org/wiki/Time_Stamp_Counter)
+* [Programmable Interval Timers](https://en.wikipedia.org/wiki/Intel_8253)
 * [Previous part](https://github.com/0xAX/linux-insides/blob/master/Booting/linux-bootstrap-4.md)
