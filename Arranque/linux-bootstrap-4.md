@@ -254,10 +254,10 @@ ebp            0x100000	0x100000
 
 Por lo que se verifican nuestras suposiciones, la dirección de `startup_32` es `0x100000`. Luego de que sepamos la dirección de la etiqueta `startup_32`, podemos prepararnos para la transición al [modo largo](https://en.wikipedia.org/wiki/Long_mode). Nuestro siguiente objetivo es preparar la pila y verificar que el CPU tenga soporte para el modo largo y [SSE](http://en.wikipedia.org/wiki/Streaming_SIMD_Extensions).
 
-Stack setup and CPU verification
+Preparación de la pila y verificación de la CPU
 --------------------------------------------------------------------------------
 
-We could not setup the stack while we did not know the address of the `startup_32` label. We can imagine the stack as an array and the stack pointer register `esp` must point to the end of this array. Of course we can define an array in our code, but we need to know its actual address to configure the stack pointer in a correct way. Let's look at the code:
+No podíamos preparar la pila mientras no conocieramos la dirección de la etiqueta `startup_32`. Podemos imaginarnos la pila como un arreglo, y el registro que sirve como apuntador a la pila, `esp`, debe apuntar al final de este arreglo. Por supuesto, podemos definir un arreglo en nuestro código, pero debemos conocer su dirección en memoria para configurar el apuntador de pila de una manera correcta. Veamos el siguiente segmento de código:
 
 ```assembly
 	movl	$boot_stack_end, %eax
@@ -265,7 +265,7 @@ We could not setup the stack while we did not know the address of the `startup_3
 	movl	%eax, %esp
 ```
 
-The `boot_stack_end` label, defined in the same [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S) assembly source code file and located in the [.bss](https://en.wikipedia.org/wiki/.bss) section:
+La etiqueta `boot_stack_end`, está definida en el mismo archivo fuente ensamblador ([arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S)) y localizada en la sección [.bss](https://en.wikipedia.org/wiki/.bss):
 
 ```assembly
 	.bss
@@ -277,9 +277,9 @@ boot_stack:
 boot_stack_end:
 ```
 
-First of all, we put the address of `boot_stack_end` into the `eax` register, so the `eax` register contains the address of `boot_stack_end` where it was linked, which is `0x0 + boot_stack_end`. To get the real address of `boot_stack_end`, we need to add the real address of the `startup_32`. As you remember, we have found this address above and put it to the `ebp` register. In the end, the register `eax` will contain real address of the `boot_stack_end` and we just need to put to the stack pointer.
+Primero que todo, colocamos la dirección `boot_stack_end` en el registro `eax`, por lo que este contiene la dirección de `boot_stack_end` donde fue enlazado, que es `0x0 + boot_stack_end`. Para obtener la dirección real de `boot_stack_end`, debemos sumar la dirección real de la etiqueta `startup_32`. Como vimos más arriba, ya la hemos hallado y colocado en el registro `ebp`. Al final, el registro `eax` contendrá la dirección real de `boot_stack_end`, y ahora simplemente necesitamos colocarla en el apuntador a la pila.
 
-After we have set up the stack, next step is CPU verification. As we are going to execute transition to the `long mode`, we need to check that the CPU supports `long mode` and `SSE`. We will do it by the call of the `verify_cpu` function:
+Luego de que hemos preparado la pila, el siguiente paso es la comprobación de la CPU. Como vamos a ejecutar la transición al `modo largo`, necesitamos verificar que efectivamente la CPU soporte `modo largo` y `SSE`. Lo haremos llamando a la función `verify_cpu`:
 
 ```assembly
 	call	verify_cpu
@@ -287,9 +287,9 @@ After we have set up the stack, next step is CPU verification. As we are going t
 	jnz	no_longmode
 ```
 
-This function defined in the [arch/x86/kernel/verify_cpu.S](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/verify_cpu.S) assembly file and just contains a couple of calls to the [cpuid](https://en.wikipedia.org/wiki/CPUID) instruction. This instruction is used for getting information about the processor. In our case it checks `long mode` and `SSE` support and returns `0` on success or `1` on fail in the `eax` register.
+Esta función, definida en [arch/x86/kernel/verify_cpu.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/kernel/verify_cpu.S), solo contiene un par de llamadas a la instrucción [cpuid](https://en.wikipedia.org/wiki/CPUID). Esta instrucción se usa para obtener información acerca del procesador. En nuestro caso, revisa el soporte tanto para el `modo largo` y para `SSE`, y retorna `0` en caso de éxito, o `1` en caso de fallo, en el registro `eax`.
 
-If the value of the `eax` is not zero, we jump to the `no_longmode` label which just stops the CPU by the call of the `hlt` instruction while no hardware interrupt will not happen:
+Si el valor en `eax` no es cero, saltamos a la etiqueta `no_longmode`, que solo detiene la CPU llamando a la instrucción `hlt` mientras no ocurra una interrupción por hardware:
 
 ```assembly
 no_longmode:
@@ -298,12 +298,12 @@ no_longmode:
 	jmp     1b
 ```
 
-If the value of the `eax` register is zero, everything is ok and we are able to continue.
+Por otra parte, si el valor de `eax` es cero, entonces todo marcha bien y estamos listos para continuar.
 
-Calculate relocation address
+Calcular la dirección de recolocación
 --------------------------------------------------------------------------------
 
-The next step is calculating relocation address for decompression if needed. First we need to know what it means for a kernel to be `relocatable`. We already know that the base address of the 32-bit entry point of the Linux kernel is `0x100000`, but that is a 32-bit entry point. The default base address of the Linux kernel is determined by the value of the `CONFIG_PHYSICAL_START` kernel configuration option. Its default value is `0x1000000` or `1 MB`. The main problem here is that if the Linux kernel crashes, a kernel developer must have a `rescue kernel` for [kdump](https://www.kernel.org/doc/Documentation/kdump/kdump.txt) which is configured to load from a different address. The Linux kernel provides special configuration option to solve this problem: `CONFIG_RELOCATABLE`. As we can read in the documentation of the Linux kernel:
+El siguiente paso es calcular la dirección de recolocación para descompresión, si llega a ser necesario. Primero tenemos que saber qué significa que un kernel sea `relocalizable`. Ya sabemos que la dirección base del punto de entrada de 32 bits del kernel Linux es `0x100000`, pero como se dijo, ese es un punto de entrada de 32 bits. La dirección base por defecto del kernel Linux está determinada por el valor de la opción de configuración del kernel `CONFIG_PHYSICAL_START`. Su valor por defecto es `0x1000000`, o `1 MB`. El principal problema aquí es que cuando el kernel Linux falla, un desarrollador del kernel debe tener un `kernel de rescate` para usar [kdump](https://www.kernel.org/doc/Documentation/kdump/kdump.txt), que está configurado para cargar desde una dirección diferente. El kernel Linux provee una opción de configuración especial para resolver este problema: `CONFIG_RELOCATABLE`. Como podemos leer en la documentación:
 
 ```
 This builds a kernel image that retains relocation information
@@ -314,7 +314,7 @@ it has been loaded at and the compile time physical address
 (CONFIG_PHYSICAL_START) is used as the minimum location.
 ```
 
-In simple terms this means that the Linux kernel with the same configuration can be booted from different addresses. Technically, this is done by compiling the decompressor as [position independent code](https://en.wikipedia.org/wiki/Position-independent_code). If we look at [arch/x86/boot/compressed/Makefile](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/Makefile), we will see that the decompressor is indeed compiled with the `-fPIC` flag:
+En otras palabras, esto significa que el kernel Linux puede ser arrancado desde diferentes direcciones con la misma configuración. Técnicamente, esto se logra compilando el descompresor como [position independent code](https://en.wikipedia.org/wiki/Position-independent_code). Si miramos el archivo [arch/x86/boot/compressed/Makefile](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/Makefile), veremos que el descompresor en efecto está compilado con la bandera `-fPIC` establecida:
 
 ```Makefile
 KBUILD_CFLAGS += -fno-strict-aliasing -fPIC
