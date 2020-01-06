@@ -51,7 +51,7 @@ esta intenta iniciar el CPU. Este reinicia todos los datos residuales
 en sus registros y establece valores predefinidos para cada uno de ellos.
 
 La línea de [CPUs 80386](https://es.wikipedia.org/wiki/Intel_80386)
-(y los pos teriores a esta) establecen una serie de datos predefinidos
+(y las posteriores a esta) establecen una serie de datos predefinidos
 en los registros del CPU luego de un reinicio:
 
 ```
@@ -71,7 +71,7 @@ bytes de dirección de espacio (1 megabyte). Pero este solo tenía registros de
 La [Segmentación de memoria](https://es.wikipedia.org/wiki/Segmentaci%C3%B3n_de_memoria)
 sirve para hacer uso de todo el espacio de dirección disponible. Toda la
 memoria es dividida en pequeños segmentos de tamaño fijo de 65535 bytes, o 64
-64 KB. Como no podemos direccionar memoria más allá de 64 Kb con registros de
+KB. Como no podemos direccionar memoria más allá de 64 Kb con registros de
 16 bits, se ideó un método alternativo. Una dirección consta de dos partes:
 el inicio de la dirección del segmento y un [*offset*](https://es.wikipedia.org/wiki/Offset_%28inform%C3%A1tica%29).
 Para obtener la dirección física en memoria, debemos multiplicar la parte del
@@ -98,13 +98,13 @@ Pero si tomamos la parte más larga del segmento de memoria y el *offset*:
 ```
 
 que son 65519 bytes del primer megabyte. Como solo un megabyte es accesible en
-el modo real, `0x10ffef` se convierte en `0x00ffef` con [A20](https://en.wikipedia.org/wiki/A20_line)desactivado.
+el modo real, `0x10ffef` se convierte en `0x00ffef` con [A20](https://en.wikipedia.org/wiki/A20_line) desactivado.
 
 Muy bien, ahora sabemos acerca del modo real y el direccionamiento de memoria.
 Volvamos a los valores de los registros del CPU luego del reinicio:
 
 El registro `CS` consiste de dos partes: el selector visible del segmento y una
-dirección base oculta. Conocemos el `CS` base predefinidoy el valor de `IP`,
+dirección base oculta. Conocemos el `CS` base predefinido y el valor de `IP`,
 por lo que la siguiente dirección lógica será:
 
 ```
@@ -135,7 +135,7 @@ reset_vector:
 	...
 ```
 
-Aquí podemos ver el que el [opcode](http://ref.x86asm.net/coder32.html#xE9) de la
+Aquí podemos ver que el [opcode](http://ref.x86asm.net/coder32.html#xE9) de la
 instrucción jump - 0xe9 apunta a la dirección `_start - ( . + 2)`,(!!) y también
 podemos ver que la sección `reset` es de 16 bytes, y comienza en `0xfffffff0`:
 
@@ -199,7 +199,7 @@ de disco.
 
 Podrás observar:
 
-![Simple bootloader which prints only `!`](http://oi60.tinypic.com/2qbwup0.jpg)
+![Simple bootloader which prints only `!`](https://raw.githubusercontent.com/0xAX/linux-insides/master/Booting/images/simple_bootloader.png)
 
 En este ejemplo podemos ver que el código será ejecutado en modo real de
 16 bits, y que empezará en la dirección de memoria `0x7c00`. Luego de iniciar, 
@@ -236,7 +236,7 @@ valores más grandes, el resultado será:
 >>> hex((0xffff * 16) + 0xffff)
 '0x10ffef'
 ```
-Donde `0x10ffef` equivale a `1MB + 64KB - 16b`i. Pero un procesador
+Donde `0x10ffef` equivale a `1MB + 64KB - 16b`. Pero un procesador
 [8086](https://es.wikipedia.org/wiki/Intel_8086_y_8088), el cuál fue el primer
 procesador en usar modo real, tenía una línea de dirección de 20 bits, y
 `2^20 = 1048576.0`, lo que es 1MB. Esto significa que la cantidad real
@@ -272,7 +272,7 @@ Al comienzo de la ejecución, el BIOS no está en RAM, sino en ROM.
 Cargador de arranque
 --------------------------------------------------------------------------------
 
-Existe un buen número de cargadores de arranque que funcionan con Linux,
+Existe un gran número de cargadores de arranque que funcionan con Linux,
 tales como [GRUB 2](https://www.gnu.org/software/grub/)
 y [syslinux](http://www.syslinux.org/wiki/index.php/The_Syslinux_Project).
 El kernel Linux tiene un [protocolo de arranque](https://github.com/torvalds/linux/blob/master/Documentation/x86/boot.txt) que le indica a los
@@ -366,7 +366,7 @@ este comienza en:
 Donde `X` es la dirección del sector de arranque cargado. En mi caso, `X` es
 `0x10000`, como podemos observar en un volcado de memoria:
 
-![kernel first address](http://oi57.tinypic.com/16bkco2.jpg)
+![kernel first address](https://raw.githubusercontent.com/0xAX/linux-insides/master/Booting/images/kernel_first_address.png)
 
 En este punto, el cargador de arranque ya ha cargado el kernel en memoria, 
 llenado los archivos de cabecera, y finalmente movido al kernel(!!).
@@ -392,7 +392,7 @@ qemu-system-x86_64 vmlinuz-3.18-generic
 
 Verás:
 
-![Try vmlinuz in qemu](http://oi60.tinypic.com/r02xkz.jpg)
+![Try vmlinuz in qemu](https://raw.githubusercontent.com/0xAX/linux-insides/master/Booting/images/try_vmlinuz_in_qemu.png)
 
 De hecho, `header.S` comienza desde [MZ](https://en.wikipedia.org/wiki/DOS_MZ_executable)
 (ver imagen arriba), imprimiendo mensajes de error(!!), y el siguiente
@@ -425,7 +425,7 @@ _start:
 
 El cargador de arranque (grub2 y otros) conoce acerca de este punto
 (una distancia relativa de `0x200` desde `MZ`) por lo que realiza un salto
-directamente a este, a pesar del heco de que `header.S` comience desde la
+directamente a este, a pesar del hecho de que `header.S` comience desde la
 sección `.bstext`, que imprime un mensaje de error:
 
 ```
@@ -495,7 +495,7 @@ Alineación de los registros de segmentos
 --------------------------------------------------------------------------------
 
 Primero que todo, se asegura que los registros de segmentos `ds` y `es` apunten
-a la misma dirección y desabilitan las interrupciones con la instrucción
+a la misma dirección y deshabilitan las interrupciones con la instrucción
 `cli`:
 
 ```assembly
@@ -503,7 +503,7 @@ a la misma dirección y desabilitan las interrupciones con la instrucción
 	movw	%ax, %es
 	cli	
 ```
-Como dije anteriormente, grub2 carga el código de cnfiguración del kernel en
+Como dije anteriormente, grub2 carga el código de configuración del kernel en
 la dirección `0x10000` y `cs` en `0x1020`, porque la ejecución no inicia
 desdel el comienzo del archivo, sino desde:
 
@@ -575,12 +575,12 @@ cargador de arranque (en mi caso, 0xf7f4). Luego de esto, colocamos el valor de
 `ax` en `ss`, el cual almacena la dirección de segmento `0x10000`, que es la
 correcta, y por lo tanto crea un registro `sp` correcto. Ahora si tenemos una pila válida:
 
-![stack](http://oi58.tinypic.com/16iwcis.jpg).
+![stack](https://raw.githubusercontent.com/0xAX/linux-insides/master/Booting/images/stack1.png).
 
 2. En el segundo escenario (`ss` != `ds`), lo primero que hacemos es colocar
 el valor de [_end](https://github.com/torvalds/linux/blob/master/arch/x86/boot/setup.ld#L52)
 (que es la dirección del final del código de configuración) en el registro
-`dx`, y revisamos el el campo de cabecera `loadflags` con la instrucción `testb`
+`dx`, y revisamos el campo de cabecera `loadflags` con la instrucción `testb`
 para ver si podemos usar el montón o no.
 [loadflags](https://github.com/torvalds/linux/blob/master/arch/x86/boot/header.S#L321)
 es un *bitmask* en un archivo de cabecera, que está definido de la siguiente forma:
@@ -612,12 +612,12 @@ a este (`dx`). Luego de esto, si `dx` no es una bandera
 (y no lo será, ya que `dx = _end + 512`), entonces se salta a la etiqueta `2`,
 como en el caso anterior, y se crea una pila válida.
 
-![stack](http://oi62.tinypic.com/dr7b5w.jpg)
+![stack](https://raw.githubusercontent.com/0xAX/linux-insides/master/Booting/images/stack2.png)
 
 3. Cuando `CAN_USE_HEAP` no está encendido, usamos una pila mínima de `_end` hasta
 `_end + STACK_SIZE`:
 
-![minimal stack](http://oi60.tinypic.com/28w051y.jpg)
+![minimal stack](https://raw.githubusercontent.com/0xAX/linux-insides/master/Booting/images/minimal_stack.png)
 
 Configuración del segmento BSS
 --------------------------------------------------------------------------------
@@ -661,7 +661,7 @@ repetidamente, almacenando el valor de `eax` (cero) en la dirección apuntada po
 llega a cero). El efecto de todo esto es que un montón de ceros son escritos
 en todas las *palabras* de la memoria desde `__bss_start` hasta `_end`:
 
-![bss](http://oi59.tinypic.com/29m2eyr.jpg)
+![bss](https://github.com/0xAX/linux-insides/blob/master/Booting/images/bss.png)
 
 Salto a main
 --------------------------------------------------------------------------------
@@ -680,7 +680,7 @@ Conclusión
 --------------------------------------------------------------------------------
 
 Este es el final de la primera parte acerca del funcionamiento interno del kernel Linux.
-si tienes alguna duda o pregunta, contáctame en twitter ([0xAX](https://twitter.com/0xAX)),
+Si tienes alguna duda o pregunta, contáctame en twitter ([0xAX](https://twitter.com/0xAX)),
 envíame un [correo](anotherworldofworld@gmail.com) o simplemente reporta un problema.
 En la siguiente parte veremos el primer código en C que se ejecuta en la configuración
 del kernel, la implementación de algunas rutinas de memoria tales como `memset`,
